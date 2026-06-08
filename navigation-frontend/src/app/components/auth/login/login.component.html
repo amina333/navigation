@@ -1,0 +1,172 @@
+<div class="login-container">
+  <!-- Left Panel - Branding -->
+  <div class="left-panel">
+    <div class="brand-content">
+      <div class="logo-section">
+        <div class="logo">
+          <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+            <circle cx="30" cy="30" r="28" stroke="currentColor" stroke-width="2"/>
+            <path d="M30 10 L40 25 L30 40 L20 25 Z" fill="currentColor"/>
+            <path d="M15 35 L30 30 L45 35" stroke="currentColor" stroke-width="2" fill="none"/>
+          </svg>
+        </div>
+        <h1 class="brand-title">Navigation Aérienne</h1>
+        <p class="brand-subtitle">Plateforme IntÃ©grÃ©e d'Assistance Ã  la Navigation AÃ©rienne</p>
+      </div>
+      
+      <div class="features">
+        <div class="feature-item">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2"/>
+            <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>Gestion des Vols en Temps RÃ©el</span>
+        </div>
+        <div class="feature-item">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="currentColor" stroke-width="2"/>
+            <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5893C21.6184 15.9258 20.8581 15.5087 20 15.31" stroke="currentColor" stroke-width="2"/>
+            <path d="M16 3.13C16.8604 3.35031 17.624 3.85071 18.1676 4.55232C18.7112 5.25392 19.0028 6.11683 19 7C19.0028 7.88317 18.7112 8.74608 18.1676 9.44768C17.624 10.1493 16.8604 10.6497 16 10.87" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>Gestion des Ã‰quipes et RÃ´les</span>
+        </div>
+        <div class="feature-item">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>Communication SÃ©curisÃ©e</span>
+        </div>
+        <div class="feature-item">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 22S8 18 8 12V5L12 3L16 5V12C16 18 12 22 12 22Z" stroke="currentColor" stroke-width="2"/>
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>Assistant IA IntÃ©grÃ©</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel - Login Form -->
+  <div class="right-panel">
+    <div class="form-container">
+      <div class="form-header">
+        <h2>Connexion</h2>
+        <p>AccÃ©dez Ã  votre espace de travail</p>
+      </div>
+
+      <form class="login-form" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+        <!-- Email Field -->
+        <div class="form-group">
+          <label for="email">Adresse Email</label>
+          <div class="input-wrapper">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" stroke-width="2"/>
+              <path d="M22 6L12 13L2 6" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <input 
+              id="email"
+              type="email" 
+              formControlName="email"
+              placeholder="exemple@nav-aerienne.dz"
+              [class.error]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+            >
+          </div>
+          <div class="error-message" *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+            <span *ngIf="loginForm.get('email')?.errors?.['required']">L'email est requis</span>
+            <span *ngIf="loginForm.get('email')?.errors?.['email']">Veuillez entrer un email valide</span>
+          </div>
+        </div>
+
+        <!-- Password Field -->
+        <div class="form-group">
+          <label for="password">Mot de passe</label>
+          <div class="input-wrapper">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <input 
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="Entrez votre mot de passe"
+              [class.error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+            >
+            <button 
+              type="button" 
+              class="password-toggle"
+              (click)="togglePassword()"
+              [class.show]="showPassword"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" *ngIf="!showPassword">
+                <path d="M1 12S5 4 12 4S23 12 23 12S19 20 12 20S1 12 1 12Z" stroke="currentColor" stroke-width="2"/>
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" *ngIf="showPassword">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12A10.07 10.07 0 0 1 5.06 6.06L1 2L2.41 0.59L22.41 20.59L21 22L17.94 17.94Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M9.88 9.88A3 3 0 0 1 12.12 12.12A3 3 0 0 1 9.88 9.88Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M14.12 14.12A3 3 0 0 1 11.88 11.88A3 3 0 0 1 14.12 14.12Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M21 12C21 12 19.5 14.5 17.5 16.5L12.5 11.5C13.5 10.5 14.5 9.5 16.5 8.5C18.5 6.5 21 12 21 12Z" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+          <div class="error-message" *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+            <span *ngIf="loginForm.get('password')?.errors?.['required']">Le mot de passe est requis</span>
+            <span *ngIf="loginForm.get('password')?.errors?.['minlength']">Minimum 6 caractÃ¨res</span>
+          </div>
+        </div>
+
+        <!-- Remember Me & Forgot Password -->
+        <div class="form-options">
+          <label class="checkbox-container">
+            <input type="checkbox" formControlName="rememberMe">
+            <span class="checkmark"></span>
+            Se souvenir de moi
+          </label>
+          <a href="#" class="forgot-password">Mot de passe oubliÃ©?</a>
+        </div>
+
+        <!-- Submit Button -->
+        <button 
+          type="submit" 
+          class="submit-btn"
+          [disabled]="loginForm.invalid || isLoading"
+        >
+          <span *ngIf="!isLoading">Se connecter</span>
+          <span *ngIf="isLoading" class="loading">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="60" stroke-dashoffset="15">
+                <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+            Connexion en cours...
+          </span>
+        </button>
+      </form>
+
+      <!-- Error Message -->
+      <div class="error-alert" *ngIf="errorMessage">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2"/>
+          <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        {{ errorMessage }}
+      </div>
+
+      <!-- Footer -->
+      <div class="form-footer">
+        <p>© 2026 Navigation Aérienne. Tous droits réservés.</p>
+        <div class="footer-links">
+          <a href="#">Mentions lÃ©gales</a>
+          <a href="#">Politique de confidentialitÃ©</a>
+          <a href="#">Support technique</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

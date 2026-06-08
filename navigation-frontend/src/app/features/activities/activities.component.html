@@ -1,0 +1,141 @@
+<div class="activities-page">
+
+  <!-- ── Hero Header ──────────────────────────────────── -->
+  <div class="page-hero">
+    <div class="hero-inner">
+      <div class="hero-left">
+        <button class="back-btn" (click)="goBack()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Retour
+        </button>
+        <h1>Activités Récentes</h1>
+        <p>Journal dynamique des événements de la plateforme SkyGuide</p>
+
+        <!-- Dernier refresh -->
+        <div class="refresh-info" *ngIf="lastRefresh">
+          <span class="live-dot"></span>
+          Mis à jour {{ formatTime(lastRefresh.toISOString()) }} · Auto-refresh 30s
+          <button class="refresh-btn" (click)="loadActivities()" title="Actualiser">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs dynamiques -->
+      <div class="hero-kpis">
+        <div class="mini-kpi">
+          <span class="kpi-num">{{ stats.total }}</span>
+          <span class="kpi-lbl">Total</span>
+        </div>
+        <div class="mini-kpi success">
+          <span class="kpi-num">{{ stats.success }}</span>
+          <span class="kpi-lbl">Succès</span>
+        </div>
+        <div class="mini-kpi warning">
+          <span class="kpi-num">{{ stats.warning }}</span>
+          <span class="kpi-lbl">Alertes</span>
+        </div>
+        <div class="mini-kpi error">
+          <span class="kpi-num">{{ stats.error }}</span>
+          <span class="kpi-lbl">Erreurs</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filters Bar ────────────────────────────────── -->
+  <div class="filters-bar">
+    <div class="search-field">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="text" placeholder="Rechercher une activité, acteur..." [(ngModel)]="searchTerm" (input)="filterActivities()">
+    </div>
+
+    <select [(ngModel)]="categoryFilter" (change)="filterActivities()" class="filter-sel">
+      <option *ngFor="let c of categories" [value]="c.value">{{ c.label }}</option>
+    </select>
+
+    <select [(ngModel)]="typeFilter" (change)="filterActivities()" class="filter-sel">
+      <option *ngFor="let t of types" [value]="t.value">{{ t.label }}</option>
+    </select>
+
+    <span class="results-count">
+      {{ filteredActivities.length }} activité{{ filteredActivities.length !== 1 ? 's' : '' }}
+    </span>
+  </div>
+
+  <!-- ── Loading ─────────────────────────────────────── -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <span>Chargement depuis le serveur...</span>
+  </div>
+
+  <!-- ── Empty ──────────────────────────────────────── -->
+  <div class="empty-state" *ngIf="!loading && filteredActivities.length === 0">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    <h3>Aucune activité trouvée</h3>
+    <p>Modifiez vos filtres ou attendez de nouvelles actions sur la plateforme.</p>
+  </div>
+
+  <!-- ── Activity Feed ──────────────────────────────── -->
+  <div class="activity-feed" *ngIf="!loading && filteredActivities.length > 0">
+
+    <div *ngFor="let activity of filteredActivities; let i = index"
+         class="activity-card"
+         [class.type-success]="activity.type === 'success'"
+         [class.type-warning]="activity.type === 'warning'"
+         [class.type-error]="activity.type === 'error'"
+         [class.type-info]="activity.type === 'info'"
+         [style.animation-delay]="(i * 0.04) + 's'"
+         [title]="formatFullDate(activity.timestamp)">
+
+      <!-- Icône -->
+      <div class="act-icon" [class]="'icon-' + activity.type">
+        <svg *ngIf="activity.type === 'success'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg *ngIf="activity.type === 'warning'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <svg *ngIf="activity.type === 'error'"   width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <svg *ngIf="activity.type === 'info'"    width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+      </div>
+
+      <!-- Contenu -->
+      <div class="act-content">
+        <div class="act-header">
+          <span class="act-title">{{ activity.title }}</span>
+          <span class="cat-badge" [class]="'cat-' + activity.category">
+            {{ getCategoryLabel(activity.category) }}
+          </span>
+        </div>
+        <p class="act-description">{{ activity.description }}</p>
+        <div class="act-meta">
+          <span class="act-actor" *ngIf="activity.actor">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            {{ activity.actor }}
+          </span>
+          <span class="act-time">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {{ formatTime(activity.timestamp) }}
+          </span>
+          <span class="act-date-full">{{ formatFullDate(activity.timestamp) }}</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>

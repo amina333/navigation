@@ -1,0 +1,655 @@
+<div class="flight-dashboard">
+
+  <!-- ══════════════════════════════════════════
+       HERO HEADER — Aviation Command Center
+  ══════════════════════════════════════════ -->
+  <div class="dashboard-hero">
+    <div class="hero-bg-pattern"></div>
+    <div class="hero-content">
+      <div class="hero-left">
+        <div class="hero-badge">
+          <span class="pulse-dot"></span>
+          Live
+        </div>
+        <h1>Tableau de bord <span class="accent">Vols</span></h1>
+        <p>Centre de contrôle opérationnel · Trajectoires en temps réel</p>
+      </div>
+      <div class="hero-right">
+        <button class="btn-hero-primary" (click)="openCreateFlightModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nouveau Vol
+        </button>
+        <button class="btn-hero-outline" (click)="refreshFlights()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Actualiser
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STATISTICS — KPI Cards
+  ══════════════════════════════════════════ -->
+  <div class="stats-grid">
+
+    <!-- Total -->
+    <div class="kpi-card kpi-total">
+      <div class="kpi-glow"></div>
+      <div class="kpi-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-value">{{ totalFlights }}</div>
+        <div class="kpi-label">Total Vols</div>
+      </div>
+      <div class="kpi-trend up">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+          <polyline points="17 6 23 6 23 12"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Actifs -->
+    <div class="kpi-card kpi-active">
+      <div class="kpi-glow"></div>
+      <div class="kpi-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-value">{{ activeFlights }}</div>
+        <div class="kpi-label">En Vol</div>
+      </div>
+      <div class="kpi-live-badge" *ngIf="activeFlights > 0">
+        <span class="live-dot"></span>Live
+      </div>
+    </div>
+
+    <!-- Programmés -->
+    <div class="kpi-card kpi-scheduled">
+      <div class="kpi-glow"></div>
+      <div class="kpi-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-value">{{ scheduledFlights }}</div>
+        <div class="kpi-label">Programmés</div>
+      </div>
+    </div>
+
+    <!-- Retardés -->
+    <div class="kpi-card kpi-delayed">
+      <div class="kpi-glow"></div>
+      <div class="kpi-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-value">{{ delayedFlights }}</div>
+        <div class="kpi-label">Retardés</div>
+      </div>
+    </div>
+
+    <!-- Atterris -->
+    <div class="kpi-card kpi-landed">
+      <div class="kpi-glow"></div>
+      <div class="kpi-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2h-2"/>
+          <polyline points="9 18 9 11 15 11 15 18"/>
+        </svg>
+      </div>
+      <div class="kpi-body">
+        <div class="kpi-value">{{ landedFlights }}</div>
+        <div class="kpi-label">Atterris</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FILTERS BAR
+  ══════════════════════════════════════════ -->
+  <div class="filters-bar">
+    <div class="search-field">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="text" placeholder="Rechercher un vol, compagnie, aéroport..." [(ngModel)]="searchTerm" (input)="filterFlights()">
+      <span class="results-count" *ngIf="searchTerm">{{ filteredFlights.length }} résultat{{ filteredFlights.length !== 1 ? 's' : '' }}</span>
+    </div>
+
+    <div class="filter-chips">
+      <select [(ngModel)]="statusFilter" (change)="filterFlights()" class="chip-select">
+        <option value="">Tous les statuts</option>
+        <option value="PROGRAMME">Programmé</option>
+        <option value="EN_EMBARQUEMENT">Embarquement</option>
+        <option value="EN_VOL">En Vol</option>
+        <option value="EN_APPROCHE">En Approche</option>
+        <option value="ARRIVE">Arrivé</option>
+        <option value="AU_SOL">Au Sol</option>
+        <option value="RETARDE">Retardé</option>
+        <option value="ANNULE">Annulé</option>
+        <option value="DIVERTE">Dérouté</option>
+      </select>
+
+      <select [(ngModel)]="typeFilter" (change)="filterFlights()" class="chip-select">
+        <option value="">Tous les types</option>
+        <option value="DEPART">Départ</option>
+        <option value="ARRIVEE">Arrivée</option>
+      </select>
+    </div>
+
+    <div class="view-switcher">
+      <button [class.active]="viewMode === 'table'" (click)="viewMode = 'table'" title="Vue tableau">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+          <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+      </button>
+      <button [class.active]="viewMode === 'cards'" (click)="viewMode = 'cards'" title="Vue cartes">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Boutons Export -->
+    <div class="export-group">
+      <button class="btn-export btn-csv" (click)="exportAsCsv()" title="Exporter en CSV">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        CSV
+      </button>
+      <button class="btn-export btn-excel" (click)="exportAsExcel()" title="Exporter en Excel">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="8" y1="13" x2="16" y2="17"/>
+          <line x1="16" y1="13" x2="8" y2="17"/>
+        </svg>
+        Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TABLE VIEW
+  ══════════════════════════════════════════ -->
+  <div class="flights-panel" *ngIf="viewMode === 'table'">
+    <div class="panel-header">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+        Liste des Vols
+        <span class="count-badge">{{ filteredFlights.length }}</span>
+      </h2>
+    </div>
+
+    <div class="flights-table-wrap">
+      <!-- Header -->
+      <div class="ft-header">
+        <div class="ft-col fc-flight">Vol</div>
+        <div class="ft-col fc-aircraft">Aéronef</div>
+        <div class="ft-col fc-route">Trajet</div>
+        <div class="ft-col fc-time">Heure</div>
+        <div class="ft-col fc-status">Statut</div>
+        <div class="ft-col fc-actions">Actions</div>
+      </div>
+
+      <!-- Rows -->
+      <div *ngFor="let flight of filteredFlights; let i = index"
+           class="ft-row"
+           [class.row-delayed]="flight.status === 'RETARDE'"
+           [class.row-active]="flight.status === 'EN_VOL'"
+           [style.animation-delay]="(i * 0.05) + 's'">
+
+        <!-- Vol -->
+        <div class="ft-col fc-flight">
+          <div class="flight-id">
+            <div class="flight-num">{{ flight.flightNumber }}</div>
+            <div class="airline-name">{{ flight.airline }}</div>
+          </div>
+        </div>
+
+        <!-- Aéronef -->
+        <div class="ft-col fc-aircraft">
+          <div class="aircraft-cell">
+            <span class="acft-type">{{ flight.aircraftType || '—' }}</span>
+            <span class="acft-reg" *ngIf="flight.aircraftRegistration">{{ flight.aircraftRegistration }}</span>
+          </div>
+        </div>
+
+        <!-- Trajet -->
+        <div class="ft-col fc-route">
+          <div class="route-cell">
+            <span class="iata-code">{{ flight.origin }}</span>
+            <div class="route-arrow-svg">
+              <svg width="32" height="12" viewBox="0 0 32 12" fill="none">
+                <line x1="0" y1="6" x2="28" y2="6" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M24 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span class="iata-code">{{ flight.destination }}</span>
+          </div>
+        </div>
+
+        <!-- Heure -->
+        <div class="ft-col fc-time">
+          <span class="time-value">{{ formatTime(flight.scheduledTime) }}</span>
+          <span class="time-actual" *ngIf="flight.actualTime">Act: {{ formatTime(flight.actualTime) }}</span>
+        </div>
+
+        <!-- Statut -->
+        <div class="ft-col fc-status flight-status">
+          <span class="status-pill" [ngClass]="getStatusClass(flight.status)">
+            <span class="status-dot"></span>
+            {{ getStatusText(flight.status) }}
+          </span>
+        </div>
+
+        <!-- Actions -->
+        <div class="ft-col fc-actions">
+          <button class="action-btn view" (click)="viewFlightDetails(flight)" title="Détails">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+          <button class="action-btn edit" (click)="updateFlightStatus(flight)" *ngIf="canUpdateStatus()" title="Modifier">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="action-btn delete" (click)="deleteFlight(flight)" title="Supprimer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-flights" *ngIf="filteredFlights.length === 0 && !loading">
+        <div class="empty-icon">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+        </div>
+        <h3>Aucun vol trouvé</h3>
+        <p>Modifiez vos filtres ou créez un nouveau vol.</p>
+        <button class="btn-hero-primary" (click)="openCreateFlightModal()">+ Créer un vol</button>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading-flights" *ngIf="loading">
+        <div class="loading-spinner"></div>
+        <span>Chargement des vols...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       CARDS VIEW
+  ══════════════════════════════════════════ -->
+  <div class="flights-cards-grid" *ngIf="viewMode === 'cards'">
+    <div *ngFor="let flight of filteredFlights; let i = index"
+         class="flight-card-modern"
+         [class.card-delayed]="flight.status === 'RETARDE'"
+         [class.card-active]="flight.status === 'EN_VOL'"
+         [style.animation-delay]="(i * 0.06) + 's'">
+
+      <div class="card-top">
+        <div class="card-flight-id">
+          <span class="card-fn">{{ flight.flightNumber }}</span>
+          <span class="card-airline">{{ flight.airline }}</span>
+        </div>
+        <span class="status-pill" [ngClass]="getStatusClass(flight.status)">
+          <span class="status-dot"></span>
+          {{ getStatusText(flight.status) }}
+        </span>
+      </div>
+
+      <div class="card-route">
+        <div class="card-airport">
+          <span class="card-iata">{{ flight.origin }}</span>
+          <span class="card-city">{{ getAirportName(flight.origin) }}</span>
+        </div>
+        <div class="card-route-line">
+          <div class="route-dot"></div>
+          <div class="route-line-inner">
+            <svg class="plane-icon-route" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/>
+            </svg>
+          </div>
+          <div class="route-dot"></div>
+        </div>
+        <div class="card-airport right">
+          <span class="card-iata">{{ flight.destination }}</span>
+          <span class="card-city">{{ getAirportName(flight.destination) }}</span>
+        </div>
+      </div>
+
+      <div class="card-meta">
+        <div class="meta-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span>{{ formatTime(flight.scheduledTime) }}</span>
+        </div>
+        <div class="meta-item" *ngIf="flight.aircraftType">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+          <span>{{ flight.aircraftType }}</span>
+        </div>
+        <div class="meta-item" *ngIf="flight.gate">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          </svg>
+          <span>Porte {{ flight.gate }}</span>
+        </div>
+      </div>
+
+      <div class="card-actions-row">
+        <button class="card-btn-outline" (click)="viewFlightDetails(flight)">Détails</button>
+        <button class="card-btn-primary" (click)="updateFlightStatus(flight)" *ngIf="canUpdateStatus()">
+          Mettre à jour
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty state cards view -->
+    <div class="empty-flights" *ngIf="filteredFlights.length === 0 && !loading">
+      <div class="empty-icon">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+      </div>
+      <h3>Aucun vol trouvé</h3>
+      <p>Créez votre premier vol pour commencer.</p>
+      <button class="btn-hero-primary" (click)="openCreateFlightModal()">+ Créer un vol</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL — Create / Edit Flight
+  ══════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="showFlightModal" (click)="closeFlightModal()">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div class="modal-title-block">
+          <div class="modal-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+          </div>
+          <h2>{{ editingFlight ? 'Modifier le Vol' : 'Nouveau Vol' }}</h2>
+        </div>
+        <button class="modal-close" (click)="closeFlightModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form [formGroup]="flightForm" (ngSubmit)="saveFlight()">
+
+          <div class="form-section-title">Identification</div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Numéro de Vol</label>
+              <input type="text" formControlName="flightNumber" placeholder="ex: TN123">
+            </div>
+            <div class="form-field">
+              <label>Compagnie</label>
+              <input type="text" formControlName="airline" placeholder="ex: Tunisair">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label>Type de Vol</label>
+              <select formControlName="type">
+                <option value="">-- Choisir --</option>
+                <option value="DEPART">Départ</option>
+                <option value="ARRIVEE">Arrivée</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Statut Initial</label>
+              <select formControlName="status">
+                <option value="PROGRAMME">Programmé</option>
+                <option value="EN_EMBARQUEMENT">Embarquement</option>
+                <option value="EN_VOL">En Vol</option>
+                <option value="EN_APPROCHE">En Approche</option>
+                <option value="ARRIVE">Arrivé</option>
+                <option value="AU_SOL">Au Sol</option>
+                <option value="RETARDE">Retardé</option>
+                <option value="ANNULE">Annulé</option>
+                <option value="DIVERTE">Dérouté</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-section-title">Aéronef</div>
+          <div formGroupName="aircraft">
+            <div class="form-row">
+              <div class="form-field">
+                <label>Type d'Aéronef</label>
+                <input type="text" formControlName="type" placeholder="ex: Boeing 737">
+              </div>
+              <div class="form-field">
+                <label>Immatriculation</label>
+                <input type="text" formControlName="registration" placeholder="ex: TS-IME">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section-title">Trajet</div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Aéroport de Départ</label>
+              <input type="text" formControlName="origin" placeholder="ex: TUN">
+            </div>
+            <div class="form-field">
+              <label>Aéroport d'Arrivée</label>
+              <input type="text" formControlName="destination" placeholder="ex: CDG">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label>Heure Prévue</label>
+              <input type="datetime-local" formControlName="scheduledTime">
+            </div>
+            <div class="form-field">
+              <label>Piste</label>
+              <input type="text" formControlName="runway" placeholder="ex: 10L">
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label>Porte d'Embarquement</label>
+            <input type="text" formControlName="gate" placeholder="ex: A12">
+          </div>
+
+          <!-- Erreur backend -->
+          <div class="form-error-banner" *ngIf="errorMessage">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {{ errorMessage }}
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-cancel" (click)="closeFlightModal()">Annuler</button>
+            <button type="submit" class="btn-submit" [disabled]="saving || flightForm.invalid">
+              <span *ngIf="!saving">{{ editingFlight ? '✓ Mettre à jour' : '+ Créer le vol' }}</span>
+              <span *ngIf="saving" class="btn-loading">Enregistrement...</span>
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL — DÉTAILS DU VOL
+  ══════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="showDetailsModal" (click)="closeDetailsModal()">
+    <div class="modal-panel details-panel" (click)="$event.stopPropagation()" *ngIf="selectedFlight">
+
+      <div class="modal-head">
+        <div class="modal-title-block">
+          <div class="modal-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+          <div>
+            <h2>{{ selectedFlight.flightNumber }}</h2>
+            <p class="modal-sub">{{ selectedFlight.airline }}</p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem">
+          <span class="status-pill" [ngClass]="getStatusClass(selectedFlight.status)">
+            <span class="status-dot"></span>
+            {{ getStatusText(selectedFlight.status) }}
+          </span>
+          <button class="modal-close" (click)="closeDetailsModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Trajet -->
+        <div class="detail-route-block">
+          <div class="det-airport">
+            <span class="det-iata">{{ selectedFlight.origin }}</span>
+            <span class="det-label">Départ</span>
+          </div>
+          <div class="det-arrow">
+            <svg width="50" height="16" viewBox="0 0 50 16" fill="none">
+              <line x1="0" y1="8" x2="45" y2="8" stroke="#3b82f6" stroke-width="2"/>
+              <path d="M40 4l5 4-5 4" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="det-airport right">
+            <span class="det-iata">{{ selectedFlight.destination }}</span>
+            <span class="det-label">Arrivée</span>
+          </div>
+        </div>
+
+        <!-- Grid infos -->
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="det-key">Compagnie</span>
+            <span class="det-val">{{ selectedFlight.airline }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="det-key">Type de vol</span>
+            <span class="det-val">{{ selectedFlight.flightType || selectedFlight.type || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="det-key">Aéronef</span>
+            <span class="det-val">{{ selectedFlight.aircraftType || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="det-key">Immatriculation</span>
+            <span class="det-val">{{ selectedFlight.aircraftRegistration || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="det-key">Heure prévue</span>
+            <span class="det-val">{{ formatTime(selectedFlight.scheduledTime) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="det-key">Heure réelle</span>
+            <span class="det-val">{{ formatTime(selectedFlight.actualTime) || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="det-key">Piste</span>
+            <span class="det-val">{{ selectedFlight.runway || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="det-key">Porte</span>
+            <span class="det-val">{{ selectedFlight.gate || '—' }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedFlight.passengersCount">
+            <span class="det-key">Passagers</span>
+            <span class="det-val">{{ selectedFlight.passengersCount }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedFlight.crewCount">
+            <span class="det-key">Équipage</span>
+            <span class="det-val">{{ selectedFlight.crewCount }}</span>
+          </div>
+        </div>
+
+        <!-- ── Historique des Événements (Section 8.1 UML) ─────────────────── -->
+        <div class="events-section" *ngIf="selectedFlightEvents.length > 0">
+          <h3 class="events-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Historique des Événements
+          </h3>
+          <div class="events-timeline">
+            <div class="evt-item" *ngFor="let evt of selectedFlightEvents">
+              <div class="evt-dot"></div>
+              <div class="evt-content">
+                <span class="evt-type">{{ evt.typeEvenement }}</span>
+                <p class="evt-desc">{{ evt.description }}</p>
+                <span class="evt-time">{{ evt.dateHeure | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions footer -->
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="closeDetailsModal()">Fermer</button>
+          <button class="btn-submit" (click)="closeDetailsModal(); editFlight(selectedFlight!)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Modifier ce vol
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

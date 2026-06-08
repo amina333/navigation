@@ -1,0 +1,79 @@
+<div class="pilot-dashboard">
+  <div class="dashboard-header">
+    <h1>Tableau de bord Pilote</h1>
+    <p>Vue d'ensemble de vos vols</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon flights">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13"/>
+          <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">12</div>
+        <div class="stat-label">Vols ce mois</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon hours">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">78h</div>
+        <div class="stat-label">Heures de vol</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon next-flight">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value">14:30</div>
+        <div class="stat-label">Prochain vol</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="upcoming-flights">
+    <h2>Vols à venir</h2>
+    <div class="flight-list">
+      <div class="flight-card">
+        <div class="flight-header">
+          <div class="flight-number">AF1234</div>
+          <div class="flight-status scheduled">Programmé</div>
+        </div>
+        <div class="flight-route">
+          <span class="origin">CDG</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13"/>
+            <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+          <span class="destination">JFK</span>
+        </div>
+        <div class="flight-details">
+          <div class="detail">
+            <span class="label">Départ:</span>
+            <span class="value">15:00</span>
+          </div>
+          <div class="detail">
+            <span class="label">Durée:</span>
+            <span class="value">8h 30min</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

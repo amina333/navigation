@@ -1,0 +1,226 @@
+<div class="home-container">
+  <!-- Animated Background -->
+  <div class="animated-bg">
+    <div class="floating-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+      <div class="shape shape-4"></div>
+      <div class="shape shape-5"></div>
+    </div>
+  </div>
+
+  <!-- Header/Navbar -->
+  <header class="navbar">
+    <div class="navbar-content">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M24 4L4 14V34L24 44L44 34V14L24 4Z" stroke="#0066cc" stroke-width="2" fill="none"/>
+            <path d="M24 4V24M24 24L44 14M24 24L4 14" stroke="#0066cc" stroke-width="2"/>
+            <circle cx="24" cy="24" r="6" fill="#0066cc"/>
+          </svg>
+        </div>
+        <span class="logo-text">{{ animatedText }}<span class="cursor-blink">|</span></span>
+      </div>
+      <button class="btn btn-primary" (click)="navigateToLogin()" [class.loading]="isLoading">
+        <span *ngIf="!isLoading">Se connecter</span>
+        <div *ngIf="isLoading" class="loading-spinner"></div>
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-text">
+        <h1 class="hero-title">
+          <span class="title-line">Plateforme Intégrée</span>
+          <span class="title-line highlight">d'Assistance à la Navigation Aérienne</span>
+        </h1>
+        <p class="hero-subtitle">
+          Centralisation des opérations, surveillance en temps réel et intelligence artificielle 
+          pour une gestion optimale du trafic aérien.
+        </p>
+      </div>
+
+      <div class="hero-features">
+        <div class="feature-item fade-in-up" style="animation-delay: 0.2s">
+          <div class="feature-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+          <div class="feature-content">
+            <h3>Temps Réel</h3>
+            <p>Surveillance instantanée des vols</p>
+          </div>
+        </div>
+        <div class="feature-item fade-in-up" style="animation-delay: 0.4s">
+          <div class="feature-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+            </svg>
+          </div>
+          <div class="feature-content">
+            <h3>Centralisation</h3>
+            <p>Données unifiées et accessibles</p>
+          </div>
+        </div>
+        <div class="feature-item fade-in-up" style="animation-delay: 0.6s">
+          <div class="feature-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div class="feature-content">
+            <h3>Intelligence Artificielle</h3>
+            <p>Prédictions et optimisations</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-actions">
+        <button class="btn btn-primary btn-large cta-button" (click)="navigateToLogin()" [class.loading]="isLoading">
+          <span *ngIf="!isLoading">Accéder au portail</span>
+          <div *ngIf="isLoading" class="loading-spinner"></div>
+          <svg *ngIf="!isLoading" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <button class="btn btn-outline btn-large" (click)="navigateToFeatures()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Découvrir les fonctionnalités
+        </button>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="floating-card">
+        <div class="card-header">
+          <div class="status-indicator online"></div>
+          <span>Live Tracking</span>
+        </div>
+        <div class="card-content">
+          <div class="flight-item">
+            <div class="flight-info">
+              <span class="flight-code">AF1234</span>
+              <span class="flight-status">En vol</span>
+            </div>
+            <div class="flight-progress">
+              <div class="progress-bar"></div>
+            </div>
+          </div>
+          <div class="flight-item">
+            <div class="flight-info">
+              <span class="flight-code">BA5678</span>
+              <span class="flight-status">Atterri</span>
+            </div>
+            <div class="flight-progress">
+              <div class="progress-bar completed"></div>
+            </div>
+          </div>
+          <div class="flight-item">
+            <div class="flight-info">
+              <span class="flight-code">LH9012</span>
+              <span class="flight-status">Prévu</span>
+            </div>
+            <div class="flight-progress">
+              <div class="progress-bar scheduled"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features">
+    <div class="container">
+      <div class="section-header">
+        <h2>Fonctionnalités Principales</h2>
+        <p>Une solution complète pour la gestion moderne du trafic aérien</p>
+      </div>
+      
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon-large">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <h3>Gestion des Vols</h3>
+          <p>Surveillance en temps réel, planification et optimisation des trajectoires aériennes</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon-large">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+              <path d="M16 3.13a4 4 0 010 7.75"/>
+            </svg>
+          </div>
+          <h3>Gestion des Utilisateurs</h3>
+          <p>Administration des agents, gestion des rôles et des permissions d'accès</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon-large">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+            </svg>
+          </div>
+          <h3>Communication Temps Réel</h3>
+          <p>Chat intégré avec WebSocket pour une coordination instantanée des équipes</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <div class="logo">
+            <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 4L4 14V34L24 44L44 34V14L24 4Z" stroke="#0066cc" stroke-width="2" fill="none"/>
+              <path d="M24 4V24M24 24L44 14M24 24L4 14" stroke="#0066cc" stroke-width="2"/>
+              <circle cx="24" cy="24" r="6" fill="#0066cc"/>
+            </svg>
+            <span>Navigation Aérienne</span>
+          </div>
+          <p>Plateforme de Navigation Aérienne Intégrée</p>
+        </div>
+        <div class="footer-links">
+          <div class="link-group">
+            <h4>Produit</h4>
+            <a href="#" (click)="navigateToFeatures()">Fonctionnalités</a>
+            <a href="#">Documentation</a>
+            <a href="#">API</a>
+          </div>
+          <div class="link-group">
+            <h4>Support</h4>
+            <a href="#">Aide</a>
+            <a href="#">Contact</a>
+            <a href="#">Statut du service</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© {{ currentYear }} Navigation Aérienne. Tous droits réservés.</p>
+      </div>
+    </div>
+  </footer>
+</div>

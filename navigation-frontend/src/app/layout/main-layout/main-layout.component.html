@@ -1,0 +1,207 @@
+<div class="main-layout" (click)="closeAllPanels()">
+
+  <!-- ════════════════════════════════════════════════════════
+       SIDEBAR — OUVERTE PAR DÉFAUT (isSidebarOpen = true)
+  ════════════════════════════════════════════════════════ -->
+  <aside class="sidebar" [class.collapsed]="!isSidebarOpen">
+
+    <!-- Logo -->
+    <div class="sidebar-header">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24 4L4 14V34L24 44L44 34V14L24 4Z" stroke="#0066cc" stroke-width="2" fill="none"/>
+          <path d="M24 4V24M24 24L44 14M24 24L4 14" stroke="#0066cc" stroke-width="2"/>
+          <circle cx="24" cy="24" r="6" fill="#0066cc"/>
+        </svg>
+        <span class="logo-text" *ngIf="isSidebarOpen">Skyguide</span>
+      </div>
+    </div>
+
+    <!-- Navigation Links -->
+    <nav class="sidebar-nav">
+
+      <a routerLink="/dashboard" routerLinkActive="active"
+         [routerLinkActiveOptions]="{exact: true}" class="nav-item"
+         title="Dashboard">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        <span class="nav-label" *ngIf="isSidebarOpen">Dashboard</span>
+      </a>
+
+      <a routerLink="/dashboard/flights" routerLinkActive="active" class="nav-item" title="Vols">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+        <span class="nav-label" *ngIf="isSidebarOpen">Vols</span>
+      </a>
+
+      <a routerLink="/dashboard/chat"
+         routerLinkActive="active"
+         [routerLinkActiveOptions]="{exact: false}"
+         class="nav-item"
+         title="Communications">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          <circle cx="9" cy="10" r="1" fill="currentColor"/>
+          <circle cx="13" cy="10" r="1" fill="currentColor"/>
+        </svg>
+        <span class="nav-label" *ngIf="isSidebarOpen">Communications</span>
+        <span class="nav-badge" *ngIf="isSidebarOpen && unreadCount > 0">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+      </a>
+
+      <a *ngIf="isAdmin" routerLink="/dashboard/users" routerLinkActive="active" class="nav-item" title="Utilisateurs">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        <span class="nav-label" *ngIf="isSidebarOpen">Utilisateurs</span>
+      </a>
+
+    </nav>
+
+    <!-- Sidebar Footer: Profil rapide -->
+    <div class="sidebar-footer" *ngIf="isSidebarOpen">
+      <div class="sidebar-profile" (click)="navigateTo('/dashboard/profile'); $event.stopPropagation()">
+        <div class="sb-avatar">{{ userInitials }}</div>
+        <div class="sb-info">
+          <div class="sb-name">{{ userName }}</div>
+          <div class="sb-role">{{ userRole }}</div>
+        </div>
+      </div>
+      <button (click)="logout()" class="logout-btn" title="Déconnexion">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Déconnexion</span>
+      </button>
+    </div>
+
+    <div class="sidebar-footer" *ngIf="!isSidebarOpen">
+      <button (click)="logout()" class="logout-btn" title="Déconnexion">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ════════════════════════════════════════════════════════
+       MAIN CONTENT
+  ════════════════════════════════════════════════════════ -->
+  <div class="main-content" [class.expanded]="!isSidebarOpen">
+
+    <!-- TOPBAR ──────────────────────────────────────────── -->
+    <header class="topbar">
+
+      <!-- Toggle button -->
+      <button class="menu-toggle" (click)="toggleSidebar(); $event.stopPropagation()" title="Ouvrir/Fermer le menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="topbar-title">
+        <span>Navigation Aérienne</span>
+      </div>
+
+      <!-- Topbar Actions -->
+      <div class="topbar-actions" (click)="$event.stopPropagation()">
+
+        <!-- NOTIFICATIONS -->
+        <button class="topbar-btn" (click)="toggleNotificationsPanel()" title="Notifications">
+          <div class="icon-wrapper">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 01-3.46 0"/>
+            </svg>
+            <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+          </div>
+        </button>
+
+        <!-- Notifications Dropdown -->
+        <div class="dropdown-panel notifications-panel" *ngIf="showNotificationsPanel">
+          <div class="panel-header">
+            <span>Notifications</span>
+            <span class="badge-inline" *ngIf="unreadCount > 0">{{ unreadCount }} non lues</span>
+          </div>
+          <div class="panel-empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            </svg>
+            <p>Aucune nouvelle notification</p>
+          </div>
+          <div class="panel-footer">
+            <a routerLink="/dashboard/notifications" (click)="closeAllPanels()">Voir tout</a>
+          </div>
+        </div>
+
+        <!-- SETTINGS (déplacé ici depuis l'assistant) -->
+        <a routerLink="/dashboard/settings" class="topbar-btn" title="Paramètres">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+          </svg>
+        </a>
+
+        <!-- PROFIL / AVATAR -->
+        <button class="topbar-btn avatar-btn" (click)="toggleProfilePanel()" title="Mon profil">
+          <div class="user-avatar">{{ userInitials }}</div>
+        </button>
+
+        <!-- Profile Dropdown -->
+        <div class="dropdown-panel profile-panel" *ngIf="showProfilePanel">
+          <div class="profile-info">
+            <div class="profile-avatar">{{ userInitials }}</div>
+            <div>
+              <div class="profile-name">{{ userName }}</div>
+              <div class="profile-role">{{ userRole }}</div>
+            </div>
+          </div>
+          <hr class="panel-divider"/>
+          <a routerLink="/dashboard/profile" class="panel-link" (click)="closeAllPanels()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            Mon profil
+          </a>
+          <a routerLink="/dashboard/settings" class="panel-link" (click)="closeAllPanels()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06A1.65 1.65 0 0015 19.4a1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+            </svg>
+            Paramètres
+          </a>
+          <hr class="panel-divider"/>
+          <button class="panel-link logout-link" (click)="logout()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Déconnexion
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-content">
+      <router-outlet></router-outlet>
+    </main>
+
+    <!-- AI Assistant (FAB + Chatbot Window) -->
+    <app-ai-assistant></app-ai-assistant>
+
+  </div>
+</div>

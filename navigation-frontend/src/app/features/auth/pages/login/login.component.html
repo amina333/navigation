@@ -1,0 +1,61 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="logo">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24 4L4 14V34L24 44L44 34V14L24 4Z" stroke="#0066cc" stroke-width="2" fill="none"/>
+          <path d="M24 4V24M24 24L44 14M24 24L4 14" stroke="#0066cc" stroke-width="2"/>
+          <circle cx="24" cy="24" r="6" fill="#0066cc"/>
+        </svg>
+      </div>
+      <h1>Skyguide Navigation</h1>
+      <p class="subtitle">Plateforme Intégrée d'Assistance à la Navigation Aérienne</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+      <div class="form-group">
+        <label class="form-label required" for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          class="form-input"
+          formControlName="email"
+          placeholder="email&#64;skyguide.ch"
+          autocomplete="email"
+        />
+        <div *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" class="form-error">
+          Please enter a valid email address
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label required" for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          class="form-input"
+          formControlName="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+        />
+        <div *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid" class="form-error">
+          Password is required
+        </div>
+      </div>
+
+      <div *ngIf="errorMessage" class="alert alert-error">
+        {{ errorMessage }}
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" [disabled]="isLoading">
+        <span *ngIf="isLoading" class="spinner"></span>
+        <span *ngIf="!isLoading">Sign In</span>
+        <span *ngIf="isLoading">Signing in...</span>
+      </button>
+    </form>
+
+    <div class="login-footer">
+      <p class="text-muted text-sm">© 2026 Skyguide. All rights reserved.</p>
+    </div>
+  </div>
+</div>

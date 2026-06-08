@@ -1,0 +1,285 @@
+<div class="profile-page">
+  <!-- Header -->
+  <div class="profile-header">
+    <div class="header-content">
+      <div class="header-text">
+        <h1>Mon Profil</h1>
+        <p>Gérez vos informations personnelles et votre sécurité</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-edit" (click)="editMode = !editMode">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2"/>
+            <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89783 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          {{ editMode ? 'Annuler' : 'Modifier' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-content">
+    <!-- Profile Card -->
+    <div class="profile-card">
+      <div class="profile-avatar">
+        <div class="avatar-container">
+          <div class="avatar">{{ currentUser?.firstName?.charAt(0) }}{{ currentUser?.lastName?.charAt(0) }}</div>
+          <div class="avatar-status" [class.active]="currentUser?.active"></div>
+        </div>
+        <div class="avatar-info">
+          <h2>{{ currentUser?.fullName }}</h2>
+          <p class="email">{{ currentUser?.email }}</p>
+          <div class="roles">
+            <span *ngFor="let role of currentUser?.roles" class="role-badge" [class]="'role-' + role.toLowerCase()">
+              {{ getRoleDisplayName(role) }}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="profile-stats">
+        <div class="stat-item">
+          <div class="stat-value">{{ currentUser?.active ? 'Actif' : 'Inactif' }}</div>
+          <div class="stat-label">Statut du compte</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ currentUser?.badgeNumber || 'N/A' }}</div>
+          <div class="stat-label">Numéro de badge</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ currentUser?.lastLogin ? (currentUser!.lastLogin | date:'dd/MM') : 'Jamais' }}</div>
+          <div class="stat-label">Dernière connexion</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Personal Information Card -->
+    <div class="info-card">
+      <div class="card-header">
+        <h3>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          Informations personnelles
+        </h3>
+      </div>
+      
+      <div class="card-content">
+        <form [formGroup]="profileForm" class="profile-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="firstName">Prénom</label>
+              <input 
+                id="firstName"
+                type="text" 
+                formControlName="firstName"
+                [readonly]="!editMode"
+                [class.editable]="editMode"
+              >
+            </div>
+            <div class="form-group">
+              <label for="lastName">Nom</label>
+              <input 
+                id="lastName"
+                type="text" 
+                formControlName="lastName"
+                [readonly]="!editMode"
+                [class.editable]="editMode"
+              >
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="email">Adresse email</label>
+            <input 
+              id="email"
+              type="email" 
+              formControlName="email"
+              [readonly]="!editMode"
+              [class.editable]="editMode"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label for="phoneNumber">Téléphone</label>
+            <input 
+              id="phoneNumber"
+              type="tel" 
+              formControlName="phoneNumber"
+              [readonly]="!editMode"
+              [class.editable]="editMode"
+              placeholder="+41 XX XXX XX XX"
+            >
+          </div>
+          
+          <div class="form-actions" *ngIf="editMode">
+            <button type="button" class="btn-cancel" (click)="cancelEdit()">Annuler</button>
+            <button type="submit" class="btn-save" (click)="saveProfile()">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Security Card -->
+    <div class="security-card">
+      <div class="card-header">
+        <h3>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+            <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          Sécurité du compte
+        </h3>
+      </div>
+      
+      <div class="card-content">
+        <div class="security-item">
+          <div class="security-info">
+            <h4>Mot de passe</h4>
+            <p>Dernière modification: {{ currentUser?.passwordChangedAt ? (currentUser!.passwordChangedAt | date:'dd MMM yyyy') : 'Jamais' }}</p>
+          </div>
+          <button class="btn-change-password" (click)="showPasswordModal = true">
+            Changer le mot de passe
+          </button>
+        </div>
+        
+        <div class="security-item">
+          <div class="security-info">
+            <h4>Authentification à deux facteurs</h4>
+            <p>{{ currentUser?.twoFactorEnabled ? 'Activée' : 'Non configurée' }}</p>
+          </div>
+          <button class="btn-configure" [class.active]="currentUser?.twoFactorEnabled">
+            {{ currentUser?.twoFactorEnabled ? 'Gérer' : 'Configurer' }}
+          </button>
+        </div>
+        
+        <div class="security-item">
+          <div class="security-info">
+            <h4>Sessions actives</h4>
+            <p>1 session active sur cet appareil</p>
+          </div>
+          <button class="btn-manage-sessions">Gérer les sessions</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Card -->
+    <div class="activity-card">
+      <div class="card-header">
+        <h3>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          Activité récente
+        </h3>
+      </div>
+      
+      <div class="card-content">
+        <div class="activity-list">
+          <div class="activity-item" *ngFor="let activity of recentActivities">
+            <div class="activity-icon" [class]="activity.type">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path *ngIf="activity.type === 'login'" d="M15 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H15" stroke="currentColor" stroke-width="2"/>
+                <path *ngIf="activity.type === 'login'" d="M10 17L15 12L10 7" stroke="currentColor" stroke-width="2"/>
+                <path *ngIf="activity.type === 'update'" d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H11" stroke="currentColor" stroke-width="2"/>
+                <path *ngIf="activity.type === 'update'" d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89783 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="activity-content">
+              <h4>{{ activity.title }}</h4>
+              <p>{{ activity.description }}</p>
+              <span class="activity-time">{{ activity.timestamp | date:'dd MMM yyyy à HH:mm' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Password Change Modal -->
+<div class="modal-overlay" *ngIf="showPasswordModal" (click)="showPasswordModal = false; passwordAlert = null">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Changer le mot de passe</h3>
+      <button class="modal-close" (click)="showPasswordModal = false; passwordAlert = null">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+          <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </button>
+    </div>
+    
+    <form [formGroup]="passwordForm" class="modal-content">
+
+      <!-- ── Alerte inline succès / erreur ── -->
+      <div class="pwd-alert" *ngIf="passwordAlert" [class.success]="passwordAlert.type === 'success'" [class.error]="passwordAlert.type === 'error'">
+        {{ passwordAlert.message }}
+      </div>
+
+      <div class="form-group">
+        <label for="currentPassword">Mot de passe actuel</label>
+        <input
+          id="currentPassword"
+          type="password"
+          formControlName="currentPassword"
+          placeholder="Entrez votre mot de passe actuel"
+        >
+        <div class="error-message" *ngIf="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
+          Le mot de passe actuel est requis
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="newPassword">Nouveau mot de passe</label>
+        <input
+          id="newPassword"
+          type="password"
+          formControlName="newPassword"
+          placeholder="Minimum 8 caractères"
+        >
+        <!-- Barre de force améliorée -->
+        <div class="password-strength">
+          <div class="strength-bar">
+            <div class="strength-fill" [ngClass]="passwordStrength"></div>
+          </div>
+          <span class="strength-label" [ngClass]="passwordStrength">{{ getStrengthText() }}</span>
+        </div>
+        <div class="error-message" *ngIf="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
+          <span *ngIf="passwordForm.get('newPassword')?.errors?.['required']">Le nouveau mot de passe est requis</span>
+          <span *ngIf="passwordForm.get('newPassword')?.errors?.['minlength']">Minimum 8 caractères</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirmer le mot de passe</label>
+        <input
+          id="confirmPassword"
+          type="password"
+          formControlName="confirmPassword"
+          placeholder="Confirmez le nouveau mot de passe"
+        >
+        <div class="error-message" *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched">
+          Les mots de passe ne correspondent pas
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="showPasswordModal = false; passwordAlert = null">Annuler</button>
+        <button type="button" class="btn-save" (click)="changePassword()" [disabled]="passwordForm.invalid || isChangingPassword">
+          <span *ngIf="!isChangingPassword">Changer le mot de passe</span>
+          <span *ngIf="isChangingPassword" class="loading">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="60" stroke-dashoffset="15">
+                <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+            Modification en cours...
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
