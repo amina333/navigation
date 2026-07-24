@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: skyguide-deployer
+  namespace: skyguide
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: skyguide-deployer-role
+  namespace: skyguide
+rules:
+  - apiGroups: ["", "apps"]
+    resources: ["deployments", "services", "configmaps", "secrets", "pods", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: skyguide-deployer-binding
+  namespace: skyguide
+subjects:
+  - kind: ServiceAccount
+    name: skyguide-deployer
+    namespace: skyguide
+roleRef:
+  kind: Role
+  name: skyguide-deployer-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: skyguide-image-pusher
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: skyguide-image-pusher-binding
+subjects:
+  - kind: ServiceAccount
+    name: skyguide-deployer
+    namespace: skyguide
+roleRef:
+  kind: ClusterRole
+  name: skyguide-image-pusher
+  apiGroup: rbac.authorization.k8s.io

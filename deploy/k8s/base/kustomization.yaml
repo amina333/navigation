@@ -1,0 +1,15 @@
+resources:
+  - namespace.yaml
+  - configmap/app-config.yaml
+  - secrets/app-secrets.yaml
+  - postgres/configmap.yaml
+  - postgres/pvc.yaml
+  - postgres/deployment.yaml
+  - postgres/service.yaml
+  - minio/pvc.yaml
+  - minio/deployment.yaml
+  - minio/service.yaml
+  - backend/deployment.yaml
+  - backend/service.yaml
+  - frontend/deployment.yaml
+  - frontend/service.yaml

@@ -1,0 +1,94 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: skyguide-build-deploy
+  namespace: skyguide
+spec:
+  description: |
+    SkyGuide CI/CD Pipeline - Builds backend & frontend, then deploys via Kustomize
+  params:
+    - name: git-url
+      type: string
+      description: Git repository URL
+      default: ""
+    - name: git-revision
+      type: string
+      description: Git revision (branch/tag/commit)
+      default: main
+    - name: overlay
+      type: string
+      description: Kustomize overlay (dev or prod)
+      default: dev
+
+  workspaces:
+    - name: shared-workspace
+
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: subdirectory
+          value: ""
+        - name: deleteExisting
+          value: "true"
+
+    - name: build-backend
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter:
+        - fetch-source
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: skyguide-backend:latest
+        - name: CONTEXT
+          value: .
+        - name: DOCKERFILE
+          value: ./deploy/docker/Dockerfile.backend
+        - name: STORAGE_DRIVER
+          value: vfs
+
+    - name: build-frontend
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter:
+        - fetch-source
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: skyguide-frontend:latest
+        - name: CONTEXT
+          value: .
+        - name: DOCKERFILE
+          value: ./deploy/docker/Dockerfile.frontend
+        - name: STORAGE_DRIVER
+          value: vfs
+
+    - name: deploy
+      taskRef:
+        name: kustomize-deploy
+        kind: Task
+      runAfter:
+        - build-backend
+        - build-frontend
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: overlay
+          value: $(params.overlay)

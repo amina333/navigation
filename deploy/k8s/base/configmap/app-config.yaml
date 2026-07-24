@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: skyguide
+data:
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  MINIO_ENDPOINT: "http://skyguide-minio:9000"
+  MINIO_BUCKET: "skyguide-chat"
+  SERVER_PORT: "8081"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"

@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kustomize-deploy
+  namespace: skyguide
+spec:
+  description: |
+    Apply Kustomize overlay to the cluster
+  params:
+    - name: overlay
+      type: string
+      description: Kustomize overlay directory name (dev or prod)
+  workspaces:
+    - name: source
+  steps:
+    - name: deploy
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/sh
+        set -e
+        echo "Deploying with overlay: $(params.overlay)"
+        cd $(workspaces.source.path)/deploy/k8s/overlays/$(params.overlay)
+        kustomize build . | kubectl apply -f -
+        echo "Waiting for rollout..."
+        kubectl rollout status deployment/skyguide-backend -n skyguide --timeout=120s || true
+        kubectl rollout status deployment/skyguide-frontend -n skyguide --timeout=120s || true
+        echo "Deployment complete!"

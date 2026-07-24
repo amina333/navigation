@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: skyguide-frontend
+  namespace: skyguide
+  labels:
+    app: skyguide-frontend
+spec:
+  selector:
+    app: skyguide-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+  type: LoadBalancer

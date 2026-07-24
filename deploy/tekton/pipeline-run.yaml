@@ -1,0 +1,24 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: skyguide-run-dev
+  namespace: skyguide
+spec:
+  pipelineRef:
+    name: skyguide-build-deploy
+  params:
+    - name: git-url
+      value: ""  # FILL: your git repo URL
+    - name: git-revision
+      value: main
+    - name: overlay
+      value: dev
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi

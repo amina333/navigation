@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skyguide-frontend
+  namespace: skyguide
+  labels:
+    app: skyguide-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: skyguide-frontend
+  template:
+    metadata:
+      labels:
+        app: skyguide-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: skyguide-frontend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"

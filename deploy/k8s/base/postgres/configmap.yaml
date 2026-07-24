@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: skyguide
+data:
+  init.sql: |
+    CREATE DATABASE navigation_db;
+    \c navigation_db
+    CREATE EXTENSION IF NOT EXISTS vector;
