@@ -2,7 +2,7 @@
 
 # ============================================================
 #  SkyGuide - Full Automated Deployment Script
-#  Run on your Ubuntu VM with k8s + kubectl ready
+#  Pure containerd runtime — no Docker involved
 # ============================================================
 
 set -euo pipefail
@@ -41,6 +41,7 @@ print_banner() {
     echo "  ║          ✈  SkyGuide Deployment System  ✈             ║"
     echo "  ║                                                       ║"
     echo "  ║    Air Navigation Platform - Kubernetes Deploy        ║"
+    echo "  ║    Runtime: containerd (pure)                         ║"
     echo "  ║                                                       ║"
     echo "  ╚═══════════════════════════════════════════════════════╝"
     echo -e "${RESET}"
@@ -57,30 +58,11 @@ print_step_header() {
     echo ""
 }
 
-log_pass() {
-    echo -e "  ${PASS} ${GREEN}$1${RESET}"
-}
-
-log_info() {
-    echo -e "  ${INFO} ${CYAN}$1${RESET}"
-}
-
-log_warn() {
-    echo -e "  ${WARN} ${YELLOW}$1${RESET}"
-}
-
-log_fail() {
-    echo -e "  ${FAIL} ${RED}$1${RESET}"
-    exit 1
-}
-
-log_sub() {
-    echo -e "  ${DOT} ${DIM}$1${RESET}"
-}
-
-log_arrow() {
-    echo -e "  ${ARROW} ${BOLD}$1${RESET}"
-}
+log_pass() { echo -e "  ${PASS} ${GREEN}$1${RESET}"; }
+log_info() { echo -e "  ${INFO} ${CYAN}$1${RESET}"; }
+log_warn() { echo -e "  ${WARN} ${YELLOW}$1${RESET}"; }
+log_fail() { echo -e "  ${FAIL} ${RED}$1${RESET}"; exit 1; }
+log_sub()  { echo -e "  ${DOT} ${DIM}$1${RESET}"; }
 
 print_config() {
     echo ""
@@ -88,6 +70,8 @@ print_config() {
     echo -e "  ${DOT} Project dir  ${DIM}→${RESET} ${PROJECT_DIR}"
     echo -e "  ${DOT} Namespace    ${DIM}→${RESET} ${NAMESPACE}"
     echo -e "  ${DOT} Overlay      ${DIM}→${RESET} ${OVERLAY}"
+    echo -e "  ${DOT} Runtime      ${DIM}→${RESET} containerd"
+    echo -e "  ${DOT} Builder      ${DIM}→${RESET} buildah → ctr import"
     echo -e "  ${DOT} Date         ${DIM}→${RESET} $(date '+%Y-%m-%d %H:%M:%S')"
     echo ""
 }
@@ -96,6 +80,59 @@ elapsed() {
     local now=$(date +%s)
     local diff=$(( now - START_TIME ))
     printf "%dm%ds" $(( diff / 60 )) $(( diff % 60 ))
+}
+
+# ── Build & import into containerd ────────────────────────
+
+build_and_load() {
+    local image_name=$1
+    local dockerfile=$2
+    local tag=$(echo "$image_name" | sed 's/:/-/g')
+    local tar_file="/tmp/${tag}.tar"
+
+    # Build with buildah
+    log_info "  buildah: building ${image_name} ..."
+    buildah bud \
+        -f "$dockerfile" \
+        -t "$image_name" \
+        . > /tmp/buildah-build.log 2>&1
+
+    if [ $? -ne 0 ]; then
+        log_fail "  buildah build failed — see /tmp/buildah-build.log"
+        return 1
+    fi
+    log_pass "  buildah: image built"
+
+    # Export to OCI tar
+    log_info "  buildah: exporting to tar ..."
+    buildah push "$image_name" "docker-archive:${tar_file}:${image_name}" > /tmp/buildah-push.log 2>&1
+
+    if [ $? -ne 0 ]; then
+        log_fail "  buildah push failed — see /tmp/buildah-push.log"
+        return 1
+    fi
+    log_pass "  buildah: exported to ${tar_file}"
+
+    # Import into containerd
+    log_info "  ctr: importing into containerd ..."
+    ctr images import "$tar_file" > /tmp/ctr-import.log 2>&1
+
+    if [ $? -ne 0 ]; then
+        log_fail "  ctr import failed — see /tmp/ctr-import.log"
+        return 1
+    fi
+    log_pass "  ctr: imported into containerd"
+
+    # Clean up tar
+    rm -f "$tar_file"
+    log_sub "cleaned up temp tar"
+
+    # Verify
+    if ctr images ls | grep -q "$image_name"; then
+        log_pass "  verified: ${image_name} is in containerd"
+    else
+        log_warn "  could not verify image in containerd"
+    fi
 }
 
 # ── Start ─────────────────────────────────────────────────
@@ -109,16 +146,42 @@ print_config
 
 print_step_header 1 $TOTAL_STEPS "Preflight checks"
 
-# Check Docker
-if command -v docker &>/dev/null; then
-    log_pass "Docker is installed $(DIM)($(docker --version 2>/dev/null | head -1))${RESET}"
+# Check containerd
+if systemctl is-active --quiet containerd 2>/dev/null; then
+    log_pass "containerd service is running"
+elif command -v containerd &>/dev/null; then
+    log_warn "containerd is installed but not running — starting it"
+    sudo systemctl start containerd
+    log_pass "containerd started"
 else
-    log_fail "Docker is not installed — install it first: sudo apt install docker.io"
+    log_fail "containerd is not installed"
+fi
+
+# Check ctr
+if command -v ctr &>/dev/null; then
+    log_pass "ctr is available $(DIM)($(ctr version 2>/dev/null | head -1))${RESET}"
+else
+    log_fail "ctr not found — is containerd properly installed?"
+fi
+
+# Check buildah
+if command -v buildah &>/dev/null; then
+    log_pass "buildah is available $(DIM)($(buildah --version 2>/dev/null))${RESET}"
+else
+    log_info "buildah not found — installing..."
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq buildah > /dev/null 2>&1
+    if command -v buildah &>/dev/null; then
+        log_pass "buildah installed $(DIM)($(buildah --version 2>/dev/null))${RESET}"
+    else
+        log_fail "Failed to install buildah — install manually: sudo apt install buildah"
+    fi
 fi
 
 # Check kubectl
 if command -v kubectl &>/dev/null; then
-    log_pass "kubectl is installed $(DIM)($(kubectl version --client -o json 2>/dev/null | grep gitVersion | cut -d'"' -f4))${RESET}"
+    KUBECTL_VER=$(kubectl version --client -o json 2>/dev/null | grep gitVersion | cut -d'"' -f4 || echo "installed")
+    log_pass "kubectl is installed $(DIM)(${KUBECTL_VER})${RESET}"
 else
     log_fail "kubectl is not installed"
 fi
@@ -132,61 +195,40 @@ fi
 
 # Check cluster
 if kubectl cluster-info &>/dev/null 2>&1; then
-    local CLUSTER_URL=$(kubectl cluster-info 2>/dev/null | head -1 | sed 's/\x1b\[[0-9;]*m//g')
     log_pass "Kubernetes cluster is reachable"
-    log_sub "$CLUSTER_URL"
 else
     log_fail "Cannot reach Kubernetes cluster — is it running?"
-fi
-
-# Detect Minikube
-if command -v minikube &>/dev/null && minikube status &>/dev/null 2>&1; then
-    log_warn "Minikube detected — switching to Minikube Docker daemon"
-    eval "$(minikube docker-env)"
-    log_pass "Docker env switched to Minikube"
-    IS_MINIKUBE=true
-else
-    log_info "Using system Docker daemon"
-    IS_MINIKUBE=false
 fi
 
 echo ""
 log_pass "All preflight checks passed"
 
 # ===========================================================
-# STEP 2: Build Docker images
+# STEP 2: Build container images
 # ===========================================================
 
-print_step_header 2 $TOTAL_STEPS "Building Docker images"
+print_step_header 2 $TOTAL_STEPS "Building container images"
 
 cd "$PROJECT_DIR"
 
 # Backend
-echo -e "  ${BOLD}Backend:${RESET}"
-log_info "Building skyguide-backend:latest ..."
+echo -e "  ${BOLD}Backend (Spring Boot + Java 17):${RESET}"
 BUILD_START=$(date +%s)
-docker build \
-    -f deploy/docker/Dockerfile.backend \
-    -t skyguide-backend:latest \
-    . 2>&1 | tail -5
+build_and_load "skyguide-backend:latest" "deploy/docker/Dockerfile.backend"
 BUILD_END=$(date +%s)
-log_pass "skyguide-backend:latest built $(DIM)($((( BUILD_END - BUILD_START ))s)${RESET})"
+log_pass "skyguide-backend built $(DIM)($((( BUILD_END - BUILD_START ))s)${RESET})"
 
 echo ""
 
 # Frontend
-echo -e "  ${BOLD}Frontend:${RESET}"
-log_info "Building skyguide-frontend:latest ..."
+echo -e "  ${BOLD}Frontend (Angular + Nginx):${RESET}"
 BUILD_START=$(date +%s)
-docker build \
-    -f deploy/docker/Dockerfile.frontend \
-    -t skyguide-frontend:latest \
-    . 2>&1 | tail -5
+build_and_load "skyguide-frontend:latest" "deploy/docker/Dockerfile.frontend"
 BUILD_END=$(date +%s)
-log_pass "skyguide-frontend:latest built $(DIM)($((( BUILD_END - BUILD_START ))s)${RESET})"
+log_pass "skyguide-frontend built $(DIM)($((( BUILD_END - BUILD_START ))s)${RESET})"
 
 echo ""
-log_pass "Both images built successfully"
+log_pass "Both images built and loaded into containerd"
 
 # ===========================================================
 # STEP 3: Create namespace
@@ -250,7 +292,7 @@ log_info "Waiting for pod to be ready ..."
 if kubectl rollout status deployment/skyguide-postgres -n "$NAMESPACE" --timeout=120s 2>&1 | tail -1; then
     log_pass "PostgreSQL is running"
 else
-    log_warn "PostgreSQL rollout timed out — check manually"
+    log_warn "PostgreSQL rollout timed out — check: kubectl get pods -n $NAMESPACE"
 fi
 
 # MinIO
@@ -260,7 +302,7 @@ log_info "Waiting for pod to be ready ..."
 if kubectl rollout status deployment/skyguide-minio -n "$NAMESPACE" --timeout=120s 2>&1 | tail -1; then
     log_pass "MinIO is running"
 else
-    log_warn "MinIO rollout timed out — check manually"
+    log_warn "MinIO rollout timed out — check: kubectl get pods -n $NAMESPACE"
 fi
 
 # Backend
@@ -270,7 +312,7 @@ log_info "Waiting for pod to be ready (this may take a minute) ..."
 if kubectl rollout status deployment/skyguide-backend -n "$NAMESPACE" --timeout=180s 2>&1 | tail -1; then
     log_pass "Backend is running"
 else
-    log_warn "Backend rollout timed out — check logs: kubectl logs -n $NAMESPACE -l app=skyguide-backend"
+    log_warn "Backend rollout timed out — check: kubectl logs -n $NAMESPACE -l app=skyguide-backend"
 fi
 
 # Frontend
@@ -280,7 +322,7 @@ log_info "Waiting for pod to be ready ..."
 if kubectl rollout status deployment/skyguide-frontend -n "$NAMESPACE" --timeout=120s 2>&1 | tail -1; then
     log_pass "Frontend is running"
 else
-    log_warn "Frontend rollout timed out — check logs: kubectl logs -n $NAMESPACE -l app=skyguide-frontend"
+    log_warn "Frontend rollout timed out — check: kubectl logs -n $NAMESPACE -l app=skyguide-frontend"
 fi
 
 echo ""
