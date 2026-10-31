@@ -10,10 +10,10 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/../../" && pwd)"
 NAMESPACE="skyguide"
 OVERLAY="${1:-dev}"
-TOTAL_STEPS=7
+TOTAL_STEPS=8
 START_TIME=$(date +%s)
 
-# ── Colors & Symbols ──────────────────────────────────────
+# -- Colors & Symbols --------------------------------------
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -24,26 +24,31 @@ BOLD='\033[1m'
 DIM='\033[2m'
 RESET='\033[0m'
 
-PASS="${GREEN}✔${RESET}"
-FAIL="${RED}✘${RESET}"
-WARN="${YELLOW}⚠${RESET}"
-INFO="${CYAN}●${RESET}"
-ARROW="${GREEN}➜${RESET}"
-DOT="${DIM}·${RESET}"
+PASS="${GREEN}OK${RESET}"
+FAIL="${RED}X${RESET}"
+WARN="${YELLOW}!${RESET}"
+INFO="${CYAN}*${RESET}"
+DOT="${DIM}.${RESET}"
 
-# ── Helper Functions ──────────────────────────────────────
+# -- Sudo helper ----------------------------------------------
+# SECURITY FIX: no more hardcoded password. This reuses your
+# normal sudo prompt / cached credential. Run `sudo -v` once
+# right before ./deploy.sh if you want to type it only once.
+
+sud() {
+    sudo "$@"
+}
+
+# -- Helper Functions -----------------------------------------
 
 print_banner() {
     echo ""
     echo -e "${BOLD}${CYAN}"
-    echo "  ╔═══════════════════════════════════════════════════════╗"
-    echo "  ║                                                       ║"
-    echo "  ║          ✈  SkyGuide Deployment System  ✈             ║"
-    echo "  ║                                                       ║"
-    echo "  ║    Air Navigation Platform - Kubernetes Deploy        ║"
-    echo "  ║    Runtime: containerd (pure)                         ║"
-    echo "  ║                                                       ║"
-    echo "  ╚═══════════════════════════════════════════════════════╝"
+    echo "  ================================================="
+    echo "            SkyGuide Deployment System"
+    echo "     Air Navigation Platform - Kubernetes Deploy"
+    echo "     Runtime: containerd (pure)"
+    echo "  ================================================="
     echo -e "${RESET}"
 }
 
@@ -52,9 +57,9 @@ print_step_header() {
     local total=$2
     local title=$3
     echo ""
-    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "${BOLD}${BLUE}--------------------------------------------------${RESET}"
     echo -e "${BOLD}${BLUE}  Step ${step}/${total}:  ${title}${RESET}"
-    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "${BOLD}${BLUE}--------------------------------------------------${RESET}"
     echo ""
 }
 
@@ -67,12 +72,12 @@ log_sub()  { echo -e "  ${DOT} ${DIM}$1${RESET}"; }
 print_config() {
     echo ""
     echo -e "  ${BOLD}Configuration:${RESET}"
-    echo -e "  ${DOT} Project dir  ${DIM}→${RESET} ${PROJECT_DIR}"
-    echo -e "  ${DOT} Namespace    ${DIM}→${RESET} ${NAMESPACE}"
-    echo -e "  ${DOT} Overlay      ${DIM}→${RESET} ${OVERLAY}"
-    echo -e "  ${DOT} Runtime      ${DIM}→${RESET} containerd"
-    echo -e "  ${DOT} Builder      ${DIM}→${RESET} buildah → ctr import"
-    echo -e "  ${DOT} Date         ${DIM}→${RESET} $(date '+%Y-%m-%d %H:%M:%S')"
+    echo -e "  ${DOT} Project dir  -> ${PROJECT_DIR}"
+    echo -e "  ${DOT} Namespace    -> ${NAMESPACE}"
+    echo -e "  ${DOT} Overlay      -> ${OVERLAY}"
+    echo -e "  ${DOT} Runtime      -> containerd"
+    echo -e "  ${DOT} Builder      -> buildah -> ctr import"
+    echo -e "  ${DOT} Date         -> $(date '+%Y-%m-%d %H:%M:%S')"
     echo ""
 }
 
@@ -82,63 +87,204 @@ elapsed() {
     printf "%dm%ds" $(( diff / 60 )) $(( diff % 60 ))
 }
 
-# ── Build & import into containerd ────────────────────────
+# -- Build & import into containerd ----------------------------
 
 build_and_load() {
     local image_name=$1
     local dockerfile=$2
     local tag=$(echo "$image_name" | sed 's/:/-/g')
-    local tar_file="/tmp/${tag}.tar"
+    # BUG FIX 3: fresh, unique tar path every single run (mktemp -u
+    # just reserves a unique name, doesn't create the file). This
+    # sidesteps the recurring "Operation not permitted" / "docker-archive
+    # doesn't support modifying existing images" errors entirely: the
+    # destination never already exists when a push is attempted.
+    local tar_file
+    tar_file=$(mktemp -u "/tmp/${tag}.XXXXXX.tar")
+    local oci_dir
+    oci_dir=$(mktemp -u "/tmp/${tag}-oci.XXXXXX")
+    local build_log="/tmp/buildah-build-${tag}.log"
+    # BUG FIX 1: push_log unique per image tag (was shared between
+    # backend and frontend before, causing collisions).
+    local push_log="/tmp/buildah-push-${tag}.log"
 
-    # Build with buildah
-    log_info "  buildah: building ${image_name} ..."
-    buildah bud \
+    log_info "  buildah: building ${image_name} (first build may take 5-10 min) ..."
+    echo -e "  ${DIM}----------------------------------------------------${RESET}"
+    set +e
+    sud buildah bud --no-cache \
         -f "$dockerfile" \
         -t "$image_name" \
-        . > /tmp/buildah-build.log 2>&1
+        . 2>&1 | tee "$build_log"
+    local build_exit=${PIPESTATUS[0]}
+    set -e
+    echo -e "  ${DIM}----------------------------------------------------${RESET}"
 
-    if [ $? -ne 0 ]; then
-        log_fail "  buildah build failed — see /tmp/buildah-build.log"
+    if [ $build_exit -ne 0 ]; then
+        echo ""
+        log_fail "  buildah build failed (exit code: $build_exit)"
+        log_sub "Full build log: $build_log"
         return 1
     fi
     log_pass "  buildah: image built"
 
-    # Export to OCI tar
     log_info "  buildah: exporting to tar ..."
-    buildah push "$image_name" "docker-archive:${tar_file}:${image_name}" > /tmp/buildah-push.log 2>&1
+    set +e
 
-    if [ $? -ne 0 ]; then
-        log_fail "  buildah push failed — see /tmp/buildah-push.log"
+    local push_exit=1
+
+    # Method 1: buildah push docker-archive
+    # (tar_file is a fresh mktemp -u path -- guaranteed not to exist
+    # yet, so no pre-emptive rm needed here anymore)
+    log_sub "trying: buildah push docker-archive ..."
+    sud buildah push "$image_name" "docker-archive:${tar_file}:${image_name}" > "$push_log" 2>&1
+    push_exit=$?
+    if [ $push_exit -ne 0 ]; then
+        log_warn "  docker-archive failed (exit $push_exit):"
+        tail -3 "$push_log" 2>/dev/null | sed 's/^/      /'
+    fi
+
+    # Method 2: buildah push oci format
+    if [ $push_exit -ne 0 ]; then
+        log_sub "trying: buildah push oci ..."
+        oci_dir=$(mktemp -u "/tmp/${tag}-oci.XXXXXX")
+        tar_file=$(mktemp -u "/tmp/${tag}.XXXXXX.tar")
+        sud buildah push "$image_name" "oci:${oci_dir}:${image_name}" > "$push_log" 2>&1
+        push_exit=$?
+        if [ $push_exit -eq 0 ]; then
+            log_info "  packaging OCI layout into tar ..."
+            sud tar -cf "$tar_file" -C "$(dirname "$oci_dir")" "$(basename "$oci_dir")" 2>/dev/null
+            push_exit=$?
+        else
+            log_warn "  oci push failed (exit $push_exit):"
+            tail -3 "$push_log" 2>/dev/null | sed 's/^/      /'
+        fi
+    fi
+
+    # Method 3: skopeo copy
+    if [ $push_exit -ne 0 ]; then
+        if command -v skopeo &>/dev/null; then
+            log_sub "trying: skopeo copy ..."
+            tar_file=$(mktemp -u "/tmp/${tag}.XXXXXX.tar")
+            sud skopeo copy "containers-storage:localhost/${image_name}" "docker-archive:${tar_file}:${image_name}" > "$push_log" 2>&1
+            push_exit=$?
+            if [ $push_exit -ne 0 ]; then
+                log_warn "  skopeo failed (exit $push_exit):"
+                tail -3 "$push_log" 2>/dev/null | sed 's/^/      /'
+            fi
+        else
+            log_sub "skopeo not installed -- skipping"
+        fi
+    fi
+
+    # Method 4: buildah from + commit to docker-archive
+    if [ $push_exit -ne 0 ]; then
+        log_sub "trying: buildah from + commit ..."
+        local cid
+        cid=$(sud buildah from "$image_name" 2>/dev/null)
+        if [ -n "$cid" ]; then
+            tar_file=$(mktemp -u "/tmp/${tag}.XXXXXX.tar")
+            sud buildah commit "$cid" "localhost/${image_name}-repackaged" > "$push_log" 2>&1
+            sud buildah push "localhost/${image_name}-repackaged" "docker-archive:${tar_file}:${image_name}" >> "$push_log" 2>&1
+            push_exit=$?
+            sud buildah rm "$cid" >/dev/null 2>&1 || true
+            sud buildah rmi "localhost/${image_name}-repackaged" >/dev/null 2>&1 || true
+            if [ $push_exit -ne 0 ]; then
+                log_warn "  from+commit failed (exit $push_exit):"
+                tail -3 "$push_log" 2>/dev/null | sed 's/^/      /'
+            fi
+        fi
+    fi
+
+    set -e
+
+    if [ $push_exit -ne 0 ]; then
+        echo ""
+        log_fail "  All export methods failed"
+        log_sub "Last error output:"
+        tail -10 "$push_log" 2>/dev/null | sed 's/^/    /'
+        echo ""
+        log_sub "Debug info:"
+        log_sub "  buildah storage driver:"
+        sud buildah info 2>/dev/null | grep -iA2 "store" | sed 's/^/    /' || true
+        log_sub "  images in buildah:"
+        sud buildah images 2>/dev/null | grep -i "skyguide" | sed 's/^/    /' || true
         return 1
     fi
-    log_pass "  buildah: exported to ${tar_file}"
 
-    # Import into containerd
+    log_pass "  buildah: exported to tar"
+
+    local tar_size=$(sud du -h "$tar_file" 2>/dev/null | cut -f1)
+    log_sub "image size: ${tar_size:-unknown}"
+
     log_info "  ctr: importing into containerd ..."
-    ctr images import "$tar_file" > /tmp/ctr-import.log 2>&1
+    set +e
+    sud ctr -n k8s.io images import --no-unpack "$tar_file" > /tmp/ctr-import.log 2>&1
+    local import_exit=$?
+    set -e
 
-    if [ $? -ne 0 ]; then
-        log_fail "  ctr import failed — see /tmp/ctr-import.log"
+    if [ $import_exit -ne 0 ]; then
+        log_fail "  ctr import failed (exit code: $import_exit)"
+        tail -10 /tmp/ctr-import.log | sed 's/^/    /' 2>/dev/null
         return 1
     fi
     log_pass "  ctr: imported into containerd"
 
-    # Clean up tar
-    rm -f "$tar_file"
-    log_sub "cleaned up temp tar"
+    # Clean up -- best-effort only. With unique mktemp paths per run,
+    # a leftover file here is harmless clutter, never a blocker for
+    # the next run -- so a cleanup failure must never fail the script.
+    sleep 1
+    if sud rm -f "$tar_file" 2>/dev/null; then
+        log_sub "cleaned up temp tar"
+    else
+        log_warn "  could not remove ${tar_file} (non-fatal, harmless leftover)"
+    fi
+    sud rm -rf "$oci_dir" 2>/dev/null || true
 
-    # Verify
-    if ctr images ls | grep -q "$image_name"; then
+    if sud ctr -n k8s.io images ls 2>/dev/null | grep -q "$image_name"; then
         log_pass "  verified: ${image_name} is in containerd"
     else
         log_warn "  could not verify image in containerd"
     fi
 }
 
-# ── Start ─────────────────────────────────────────────────
+# -- Start ------------------------------------------------------
 
 print_banner
 print_config
+
+# ===========================================================
+# STEP 0: Clean old images
+# ===========================================================
+
+print_step_header 0 $TOTAL_STEPS "Cleaning old SkyGuide images"
+
+OLD_BACKEND=$(sud buildah images 2>/dev/null | grep skyguide-backend | awk '{print $3}' || true)
+OLD_FRONTEND=$(sud buildah images 2>/dev/null | grep skyguide-frontend | awk '{print $3}' || true)
+
+if [ -n "$OLD_BACKEND" ]; then
+    log_info "  Found old skyguide-backend images -- removing ..."
+    sud buildah rmi -f "$OLD_BACKEND" 2>/dev/null || true
+    log_pass "Old skyguide-backend images deleted"
+else
+    log_info "  No old skyguide-backend images found"
+fi
+
+if [ -n "$OLD_FRONTEND" ]; then
+    log_info "  Found old skyguide-frontend images -- removing ..."
+    sud buildah rmi -f "$OLD_FRONTEND" 2>/dev/null || true
+    log_pass "Old skyguide-frontend images deleted"
+else
+    log_info "  No old skyguide-frontend images found"
+fi
+
+DANGLING=$(sud buildah images --filter dangling=true -q 2>/dev/null || true)
+if [ -n "$DANGLING" ]; then
+    log_info "  Cleaning dangling images ..."
+    sud buildah rmi -f $DANGLING 2>/dev/null || true
+    log_pass "Dangling images cleaned"
+fi
+
+echo ""
+log_pass "Old images cleaned"
 
 # ===========================================================
 # STEP 1: Preflight checks
@@ -146,58 +292,83 @@ print_config
 
 print_step_header 1 $TOTAL_STEPS "Preflight checks"
 
-# Check containerd
 if systemctl is-active --quiet containerd 2>/dev/null; then
     log_pass "containerd service is running"
 elif command -v containerd &>/dev/null; then
-    log_warn "containerd is installed but not running — starting it"
-    sudo systemctl start containerd
+    log_warn "containerd is installed but not running -- starting it"
+    sud systemctl start containerd
     log_pass "containerd started"
 else
     log_fail "containerd is not installed"
 fi
 
-# Check ctr
 if command -v ctr &>/dev/null; then
-    log_pass "ctr is available $(DIM)($(ctr version 2>/dev/null | head -1))${RESET}"
+    log_pass "ctr is available $DIM($(ctr version 2>/dev/null | head -1))${RESET}"
 else
-    log_fail "ctr not found — is containerd properly installed?"
+    log_fail "ctr not found -- is containerd properly installed?"
 fi
 
-# Check buildah
 if command -v buildah &>/dev/null; then
-    log_pass "buildah is available $(DIM)($(buildah --version 2>/dev/null))${RESET}"
+    log_pass "buildah is available $DIM($(buildah --version 2>/dev/null))${RESET}"
 else
-    log_info "buildah not found — installing..."
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq buildah > /dev/null 2>&1
+    log_info "buildah not found -- installing..."
+    sud apt-get update -qq
+    sud apt-get install -y -qq buildah > /dev/null 2>&1
     if command -v buildah &>/dev/null; then
-        log_pass "buildah installed $(DIM)($(buildah --version 2>/dev/null))${RESET}"
+        log_pass "buildah installed $DIM($(buildah --version 2>/dev/null))${RESET}"
     else
-        log_fail "Failed to install buildah — install manually: sudo apt install buildah"
+        log_fail "Failed to install buildah -- install manually: sudo apt install buildah"
     fi
 fi
 
-# Check kubectl
+log_info "  checking buildah can build (quick test) ..."
+if sud buildah from --name skyguide-test scratch 2>/dev/null; then
+    sud buildah rm skyguide-test 2>/dev/null
+    log_pass "buildah can create containers"
+else
+    log_warn "buildah test container failed -- check buildah/storage config"
+fi
+
+log_info "  checking buildah storage driver ..."
+STORAGE_DRIVER_INFO=$(sud buildah info 2>/dev/null | grep -A5 -i "store" || echo "unknown")
+STORAGE_DRIVER=$(echo "$STORAGE_DRIVER_INFO" | grep -i "driver" | head -1 || echo "unknown")
+log_sub "buildah storage: ${STORAGE_DRIVER}"
+
+SNAP_INFO=$(sud ctr -n k8s.io plugins ls 2>/dev/null | grep snapshotter || echo "unknown")
+log_sub "containerd snapshotter: ${SNAP_INFO}"
+
+REGISTRIES_CONF="/etc/containers/registries.conf"
+if [ -f "$REGISTRIES_CONF" ]; then
+    if ! grep -q 'docker.io' "$REGISTRIES_CONF" 2>/dev/null; then
+        log_info "  configuring Docker Hub in $REGISTRIES_CONF ..."
+        echo 'unqualified-search-registries = ["docker.io"]' | sud tee -a "$REGISTRIES_CONF" > /dev/null
+        log_pass "Docker Hub added to search registries"
+    else
+        log_pass "registries.conf already configured"
+    fi
+else
+    log_info "  creating $REGISTRIES_CONF ..."
+    echo 'unqualified-search-registries = ["docker.io"]' | sud tee "$REGISTRIES_CONF" > /dev/null
+    log_pass "registries.conf created"
+fi
+
 if command -v kubectl &>/dev/null; then
     KUBECTL_VER=$(kubectl version --client -o json 2>/dev/null | grep gitVersion | cut -d'"' -f4 || echo "installed")
-    log_pass "kubectl is installed $(DIM)(${KUBECTL_VER})${RESET}"
+    log_pass "kubectl is installed $DIM(${KUBECTL_VER})${RESET}"
 else
     log_fail "kubectl is not installed"
 fi
 
-# Check kustomize
 if command -v kustomize &>/dev/null; then
     log_pass "kustomize is installed"
 else
     log_fail "kustomize is not installed"
 fi
 
-# Check cluster
 if kubectl cluster-info &>/dev/null 2>&1; then
     log_pass "Kubernetes cluster is reachable"
 else
-    log_fail "Cannot reach Kubernetes cluster — is it running?"
+    log_fail "Cannot reach Kubernetes cluster -- is it running?"
 fi
 
 echo ""
@@ -211,21 +382,19 @@ print_step_header 2 $TOTAL_STEPS "Building container images"
 
 cd "$PROJECT_DIR"
 
-# Backend
 echo -e "  ${BOLD}Backend (Spring Boot + Java 17):${RESET}"
 BUILD_START=$(date +%s)
 build_and_load "skyguide-backend:latest" "deploy/docker/Dockerfile.backend"
 BUILD_END=$(date +%s)
-log_pass "skyguide-backend built $(DIM)($((( BUILD_END - BUILD_START ))s)${RESET})"
+log_pass "skyguide-backend built ${DIM}($(( BUILD_END - BUILD_START ))s)${RESET}"
 
 echo ""
 
-# Frontend
 echo -e "  ${BOLD}Frontend (Angular + Nginx):${RESET}"
 BUILD_START=$(date +%s)
 build_and_load "skyguide-frontend:latest" "deploy/docker/Dockerfile.frontend"
 BUILD_END=$(date +%s)
-log_pass "skyguide-frontend built $(DIM)($((( BUILD_END - BUILD_START ))s)${RESET})"
+log_pass "skyguide-frontend built ${DIM}($(( BUILD_END - BUILD_START ))s)${RESET}"
 
 echo ""
 log_pass "Both images built and loaded into containerd"
@@ -237,7 +406,7 @@ log_pass "Both images built and loaded into containerd"
 print_step_header 3 $TOTAL_STEPS "Preparing namespace"
 
 if kubectl get namespace "$NAMESPACE" &>/dev/null 2>&1; then
-    log_warn "Namespace '$NAMESPACE' already exists — reusing"
+    log_warn "Namespace '$NAMESPACE' already exists -- reusing"
 else
     kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1
     log_pass "Namespace '$NAMESPACE' created"
@@ -286,43 +455,39 @@ log_pass "All Kubernetes resources applied"
 
 print_step_header 6 $TOTAL_STEPS "Waiting for pods to start"
 
-# PostgreSQL
 echo -e "  ${BOLD}PostgreSQL:${RESET}"
 log_info "Waiting for pod to be ready ..."
 if kubectl rollout status deployment/skyguide-postgres -n "$NAMESPACE" --timeout=120s 2>&1 | tail -1; then
     log_pass "PostgreSQL is running"
 else
-    log_warn "PostgreSQL rollout timed out — check: kubectl get pods -n $NAMESPACE"
+    log_warn "PostgreSQL rollout timed out -- check: kubectl get pods -n $NAMESPACE"
 fi
 
-# MinIO
 echo ""
 echo -e "  ${BOLD}MinIO:${RESET}"
 log_info "Waiting for pod to be ready ..."
 if kubectl rollout status deployment/skyguide-minio -n "$NAMESPACE" --timeout=120s 2>&1 | tail -1; then
     log_pass "MinIO is running"
 else
-    log_warn "MinIO rollout timed out — check: kubectl get pods -n $NAMESPACE"
+    log_warn "MinIO rollout timed out -- check: kubectl get pods -n $NAMESPACE"
 fi
 
-# Backend
 echo ""
 echo -e "  ${BOLD}Backend (Spring Boot):${RESET}"
 log_info "Waiting for pod to be ready (this may take a minute) ..."
 if kubectl rollout status deployment/skyguide-backend -n "$NAMESPACE" --timeout=180s 2>&1 | tail -1; then
     log_pass "Backend is running"
 else
-    log_warn "Backend rollout timed out — check: kubectl logs -n $NAMESPACE -l app=skyguide-backend"
+    log_warn "Backend rollout timed out -- check: kubectl logs -n $NAMESPACE -l app=skyguide-backend"
 fi
 
-# Frontend
 echo ""
 echo -e "  ${BOLD}Frontend (Angular + Nginx):${RESET}"
 log_info "Waiting for pod to be ready ..."
 if kubectl rollout status deployment/skyguide-frontend -n "$NAMESPACE" --timeout=120s 2>&1 | tail -1; then
     log_pass "Frontend is running"
 else
-    log_warn "Frontend rollout timed out — check: kubectl logs -n $NAMESPACE -l app=skyguide-frontend"
+    log_warn "Frontend rollout timed out -- check: kubectl logs -n $NAMESPACE -l app=skyguide-frontend"
 fi
 
 echo ""
@@ -334,30 +499,28 @@ log_pass "All deployments are ready"
 
 print_step_header 7 $TOTAL_STEPS "Setting up CI/CD (Tekton + ArgoCD)"
 
-# Tekton
 if kubectl get namespace tekton-pipelines &>/dev/null 2>&1; then
-    log_info "Tekton detected — creating pipeline resources ..."
+    log_info "Tekton detected -- creating pipeline resources ..."
     kubectl apply -f "$PROJECT_DIR/deploy/tekton/rbac.yaml" >/dev/null 2>&1 || true
     kubectl apply -f "$PROJECT_DIR/deploy/tekton/tasks/kustomize-deploy.yaml" >/dev/null 2>&1 || true
     kubectl apply -f "$PROJECT_DIR/deploy/tekton/pipeline.yaml" >/dev/null 2>&1 || true
     log_pass "Tekton pipeline 'skyguide-build-deploy' created"
     log_sub "Run it: kubectl apply -f deploy/tekton/pipeline-run.yaml"
 else
-    log_warn "Tekton not installed — skipping pipeline setup"
+    log_warn "Tekton not installed -- skipping pipeline setup"
 fi
 
-# ArgoCD
 if kubectl get namespace argocd &>/dev/null 2>&1; then
-    log_info "ArgoCD detected — creating application ..."
+    log_info "ArgoCD detected -- creating application ..."
     kubectl apply -f "$PROJECT_DIR/deploy/argocd/application.yaml" >/dev/null 2>&1 || true
     log_pass "ArgoCD application 'skyguide' created"
     log_sub "Note: Update deploy/argocd/application.yaml with your git repo URL first"
 else
-    log_warn "ArgoCD not installed — skipping application setup"
+    log_warn "ArgoCD not installed -- skipping application setup"
 fi
 
 # ===========================================================
-# DONE — Print summary
+# DONE -- Print summary
 # ===========================================================
 
 END_TIME=$(date +%s)
@@ -365,58 +528,52 @@ DURATION=$(( END_TIME - START_TIME ))
 
 echo ""
 echo -e "${BOLD}${CYAN}"
-echo "  ╔═══════════════════════════════════════════════════════════════╗"
-echo "  ║                                                               ║"
-echo "  ║               🎉  Deployment Complete!                        ║"
-echo "  ║                                                               ║"
-echo "  ╚═══════════════════════════════════════════════════════════════╝"
+echo "  ================================================================="
+echo "                     Deployment Complete!"
+echo "  ================================================================="
 echo -e "${RESET}"
 echo ""
 
-# Pod status
-echo -e "${BOLD}  📦 Pod Status:${RESET}"
+echo -e "${BOLD}  Pod Status:${RESET}"
 echo ""
 kubectl get pods -n "$NAMESPACE" -o wide 2>/dev/null | sed 's/^/  /'
 echo ""
 
-# Service status
-echo -e "${BOLD}  🔌 Services:${RESET}"
+echo -e "${BOLD}  Services:${RESET}"
 echo ""
 kubectl get svc -n "$NAMESPACE" 2>/dev/null | sed 's/^/  /'
 echo ""
 
-# URLs
-echo -e "${BOLD}  🌐 Access URLs:${RESET}"
+echo -e "${BOLD}  Access URLs:${RESET}"
 echo ""
 
-# Frontend URL
 FRONTEND_SVC=$(kubectl get svc skyguide-frontend -n "$NAMESPACE" -o jsonpath='{.spec.type}' 2>/dev/null)
 if [ "$FRONTEND_SVC" = "LoadBalancer" ]; then
     EXTERNAL_IP=$(kubectl get svc skyguide-frontend -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
     if [ -n "$EXTERNAL_IP" ]; then
-        echo -e "  ${GREEN}➜${RESET} ${BOLD}Frontend:${RESET}  http://${EXTERNAL_IP}"
+        echo -e "  ${GREEN}->${RESET} ${BOLD}Frontend:${RESET}  http://${EXTERNAL_IP}"
     else
-        echo -e "  ${GREEN}➜${RESET} ${BOLD}Frontend:${RESET}  http://<pending — run: kubectl get svc skyguide-frontend -n $NAMESPACE>"
+        echo -e "  ${GREEN}->${RESET} ${BOLD}Frontend:${RESET}  http://<pending -- run: kubectl get svc skyguide-frontend -n $NAMESPACE>"
     fi
 else
     NODE_PORT=$(kubectl get svc skyguide-frontend -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
     NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null)
     if [ -n "$NODE_IP" ] && [ -n "$NODE_PORT" ]; then
-        echo -e "  ${GREEN}➜${RESET} ${BOLD}Frontend:${RESET}  http://${NODE_IP}:${NODE_PORT}"
+        echo -e "  ${GREEN}->${RESET} ${BOLD}Frontend:${RESET}  http://${NODE_IP}:${NODE_PORT}"
     fi
 fi
 
-echo -e "  ${GREEN}➜${RESET} ${BOLD}Backend API:${RESET} http://localhost:8081/api  ${DIM}(port-forward required)${RESET}"
-echo -e "  ${GREEN}➜${RESET} ${BOLD}Swagger UI:${RESET} http://localhost:8081/swagger-ui.html  ${DIM}(port-forward required)${RESET}"
-echo -e "  ${GREEN}➜${RESET} ${BOLD}WebSocket:${RESET}  ws://localhost:8081/ws  ${DIM}(port-forward required)${RESET}"
+echo -e "  ${GREEN}->${RESET} ${BOLD}Backend API:${RESET} http://localhost:8081/api  ${DIM}(port-forward required)${RESET}"
+echo -e "  ${GREEN}->${RESET} ${BOLD}Swagger UI:${RESET} http://localhost:8081/swagger-ui.html  ${DIM}(port-forward required)${RESET}"
+echo -e "  ${GREEN}->${RESET} ${BOLD}WebSocket:${RESET}  ws://localhost:8081/ws  ${DIM}(port-forward required)${RESET}"
 
 echo ""
-echo -e "  ${BOLD}🔒 Admin Login:${RESET}"
-echo -e "  ${GREEN}➜${RESET} Email:    ${BOLD}admin@navigation.tn${RESET}"
-echo -e "  ${GREEN}➜${RESET} Password: ${BOLD}Admin@1234${RESET}"
+echo -e "  ${BOLD}Admin Login:${RESET}"
+echo -e "  ${GREEN}->${RESET} Email:    ${BOLD}admin@navigation.tn${RESET}"
+echo -e "  ${GREEN}->${RESET} Password: ${BOLD}Admin@1234${RESET}"
 
 echo ""
-echo -e "  ${BOLD}🚀 Quick Port-Forward (run in new terminals):${RESET}"
+echo -e "  ${BOLD}Quick Port-Forward (run in new terminals):${RESET}"
 echo ""
 echo -e "    ${DIM}# Frontend${RESET}"
 echo -e "    ${CYAN}kubectl port-forward -n $NAMESPACE svc/skyguide-frontend 80:80${RESET}"
@@ -426,10 +583,10 @@ echo -e "    ${CYAN}kubectl port-forward -n $NAMESPACE svc/skyguide-backend 8081
 echo ""
 echo -e "    ${DIM}# MinIO Console${RESET}"
 echo -e "    ${CYAN}kubectl port-forward -n $NAMESPACE svc/skyguide-minio 9001:9001${RESET}"
-echo -e "    ${DIM}  → http://localhost:9001  (minioadmin / minioadmin)${RESET}"
+echo -e "    ${DIM}  -> http://localhost:9001  (minioadmin / minioadmin)${RESET}"
 
 echo ""
-echo -e "  ${BOLD}📋 Useful Commands:${RESET}"
+echo -e "  ${BOLD}Useful Commands:${RESET}"
 echo ""
 echo -e "    ${DIM}# Watch pods in real time${RESET}"
 echo -e "    ${CYAN}kubectl get pods -n $NAMESPACE -w${RESET}"
@@ -447,7 +604,7 @@ echo -e "    ${DIM}# Delete everything${RESET}"
 echo -e "    ${CYAN}kubectl delete namespace $NAMESPACE${RESET}"
 
 echo ""
-echo -e "  ${BOLD}⏱  Total deployment time: $(elapsed)${RESET}"
+echo -e "  ${BOLD}Total deployment time: $(elapsed)${RESET}"
 echo ""
-echo -e "${BOLD}${CYAN}  Happy flying! ✈${RESET}"
+echo -e "${BOLD}${CYAN}  Happy flying!${RESET}"
 echo ""

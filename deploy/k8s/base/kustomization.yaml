@@ -1,7 +1,6 @@
 resources:
   - namespace.yaml
   - configmap/app-config.yaml
-  - secrets/app-secrets.yaml
   - postgres/configmap.yaml
   - postgres/pvc.yaml
   - postgres/deployment.yaml
