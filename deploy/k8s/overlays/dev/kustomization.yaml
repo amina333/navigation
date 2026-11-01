@@ -2,15 +2,18 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../base
+- ../../base
 
 # No namePrefix: service names (skyguide-postgres, skyguide-minio,
 # skyguide-backend) are hard-coded in env vars, initContainers and nginx.conf.
 labels:
-  - pairs:
-      environment: dev
-    includeSelectors: false
+- pairs:
+    environment: dev
 
 patches:
-  - path: patches/backend-replicas.yaml
-  - path: patches/frontend-replicas.yaml
+- path: patches/backend-replicas.yaml
+- path: patches/frontend-replicas.yaml
+images:
+- name: skyguide-frontend
+  newName: skyguide-frontend
+  newTag: v2
