@@ -61,7 +61,7 @@ export class AuthService {
   generateResetToken(email: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.API_URL}/generate-reset-token/${email}`, {});
   }
-
+//.....demo pfe............
   resetPassword(email: string, resetToken: string, newPassword: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.API_URL}/reset-password`, { email, resetToken, newPassword });
   }
