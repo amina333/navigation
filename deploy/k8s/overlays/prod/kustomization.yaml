@@ -4,9 +4,12 @@ kind: Kustomization
 resources:
   - ../../base
 
-namePrefix: prod-
-commonLabels:
-  environment: prod
+# No namePrefix: service names (skyguide-postgres, skyguide-minio,
+# skyguide-backend) are hard-coded in env vars, initContainers and nginx.conf.
+labels:
+  - pairs:
+      environment: prod
+    includeSelectors: false
 
 patches:
   - path: patches/backend-replicas.yaml

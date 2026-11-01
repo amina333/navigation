@@ -217,7 +217,7 @@ build_and_load() {
 
     log_info "  ctr: importing into containerd ..."
     set +e
-    sud ctr -n k8s.io images import --no-unpack "$tar_file" > /tmp/ctr-import.log 2>&1
+    sudo ctr -n k8s.io images import --no-unpack "$tar_file" > /tmp/ctr-import.log 2>&1
     local import_exit=$?
     set -e
 
@@ -239,7 +239,7 @@ build_and_load() {
     fi
     sud rm -rf "$oci_dir" 2>/dev/null || true
 
-    if sud ctr -n k8s.io images ls 2>/dev/null | grep -q "$image_name"; then
+    if sudo ctr -n k8s.io images ls 2>/dev/null | grep -q "$image_name"; then
         log_pass "  verified: ${image_name} is in containerd"
     else
         log_warn "  could not verify image in containerd"
@@ -334,7 +334,7 @@ STORAGE_DRIVER_INFO=$(sud buildah info 2>/dev/null | grep -A5 -i "store" || echo
 STORAGE_DRIVER=$(echo "$STORAGE_DRIVER_INFO" | grep -i "driver" | head -1 || echo "unknown")
 log_sub "buildah storage: ${STORAGE_DRIVER}"
 
-SNAP_INFO=$(sud ctr -n k8s.io plugins ls 2>/dev/null | grep snapshotter || echo "unknown")
+SNAP_INFO=$(sudo ctr -n k8s.io plugins ls 2>/dev/null | grep snapshotter || echo "unknown")
 log_sub "containerd snapshotter: ${SNAP_INFO}"
 
 REGISTRIES_CONF="/etc/containers/registries.conf"
@@ -421,7 +421,7 @@ log_sub "All resources will be deployed to: ${BOLD}${NAMESPACE}${RESET}"
 print_step_header 4 $TOTAL_STEPS "Applying Secrets & ConfigMaps"
 
 log_info "Applying application secrets (DB password, JWT, OpenAI key) ..."
-kubectl apply -f "$PROJECT_DIR/deploy/k8s/base/secrets/app-secrets.yaml" >/dev/null 2>&1
+kubectl -n "$NAMESPACE" create secret generic app-secrets --from-env-file="$PROJECT_DIR/deploy/secrets.env" --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1
 log_pass "Secrets applied"
 
 log_info "Applying application config (MinIO endpoint, server port) ..."

@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: ""  # FILL: your git repo URL
+    repoURL: https://github.com/amina333/navigation.git   # <-- your GitHub repo URL
     targetRevision: main
     path: deploy/k8s/overlays/dev
   destination:

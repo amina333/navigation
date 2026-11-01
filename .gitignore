@@ -1,1 +1,2 @@
 deploy/k8s/base/secrets/app-secrets.yaml
+deploy/secrets.env

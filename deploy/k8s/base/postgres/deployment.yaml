@@ -7,6 +7,8 @@ metadata:
     app: skyguide-postgres
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: skyguide-postgres
@@ -17,7 +19,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:16-alpine
+          image: pgvector/pgvector:pg16
           ports:
             - containerPort: 5432
           env:
@@ -45,9 +47,9 @@ spec:
           readinessProbe:
             exec:
               command:
-                - pg_isready
-                - -U
-                - postgres
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:

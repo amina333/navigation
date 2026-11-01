@@ -4,7 +4,16 @@ metadata:
   name: postgres-init
   namespace: skyguide
 data:
+  # The database itself is created by POSTGRES_DB, and this script runs inside it.
   init.sql: |
-    CREATE DATABASE navigation_db;
-    \c navigation_db
     CREATE EXTENSION IF NOT EXISTS vector;
+#apiVersion: v1
+#kind: ConfigMap
+#metadata:
+ # name: postgres-init
+  #namespace: skyguide
+#data:
+ ## init.sql: |
+   # CREATE DATABASE navigation_db;
+    #\c navigation_db
+    #CREATE EXTENSION IF NOT EXISTS vector;

@@ -22,7 +22,7 @@ spec:
             - sh
             - -c
             - |
-              until nc -z dev-skyguide-postgres 5432; do
+              until nc -z skyguide-postgres 5432; do
                 echo "Waiting for PostgreSQL..."
                 sleep 2
               done
@@ -33,7 +33,7 @@ spec:
             - sh
             - -c
             - |
-              until nc -z dev-skyguide-minio 9000; do
+              until nc -z skyguide-minio 9000; do
                 echo "Waiting for MinIO..."
                 sleep 2
               done
@@ -41,6 +41,7 @@ spec:
       containers:
         - name: backend
           image: skyguide-backend:latest
+          # Image is built on the VM and imported into containerd (k8s.io namespace)
           imagePullPolicy: Never
           ports:
             - containerPort: 8081
@@ -53,24 +54,23 @@ spec:
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://$(DB_HOST):$(DB_PORT)/$(DB_NAME)
             - name: MINIO_ENDPOINT
-              value: http://dev-skyguide-minio:9000
+              value: http://skyguide-minio:9000
+          # /api/auth/signin is a POST endpoint -> GET probes returned 4xx.
+          # TCP probes only check that Spring Boot is listening on 8081.
           startupProbe:
             tcpSocket:
               port: 8081
-            initialDelaySeconds: 20
             periodSeconds: 10
-            failureThreshold: 60
+            failureThreshold: 30
           readinessProbe:
             tcpSocket:
               port: 8081
-            initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 5
           livenessProbe:
             tcpSocket:
               port: 8081
-            initialDelaySeconds: 60
             periodSeconds: 30
+            failureThreshold: 3
           resources:
             requests:
               memory: "512Mi"

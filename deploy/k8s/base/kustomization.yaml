@@ -1,3 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# NOTE: app-secrets is NOT managed in git anymore.
+# It is created manually on the cluster (see deploy/scripts/fix-cluster.sh).
 resources:
   - namespace.yaml
   - configmap/app-config.yaml
@@ -12,3 +17,17 @@ resources:
   - backend/service.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
+#resources:
+ # - namespace.yaml
+  #- configmap/app-config.yaml
+  #- postgres/configmap.yaml
+  #- postgres/pvc.yaml
+  #- postgres/deployment.yaml
+  #- postgres/service.yaml
+  #- minio/pvc.yaml
+ # - minio/deployment.yaml
+  #- minio/service.yaml
+  #- backend/deployment.yaml
+  #- backend/service.yaml
+  #- frontend/deployment.yaml
+  #- frontend/service.yaml
