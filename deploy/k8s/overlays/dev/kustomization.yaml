@@ -16,4 +16,4 @@ patches:
 images:
 - name: skyguide-frontend
   newName: skyguide-frontend
-  newTag: v3
+  newTag: v4
