@@ -2,6 +2,7 @@ package com.air.navigation.controllers;
 
 import com.air.navigation.dto.request.ChatMessageRequestDto;
 import com.air.navigation.dto.request.ChatRoomRequestDto;
+import com.air.navigation.dto.response.ChatContactDto;
 import com.air.navigation.dto.response.ChatMessageResponseDto;
 import com.air.navigation.dto.response.ChatRoomResponseDto;
 import com.air.navigation.security.services.UserDetailsImpl;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -36,19 +38,27 @@ public class ChatController {
 
     @GetMapping("/rooms/public")
     @Operation(summary = "Salons publics")
-    public ResponseEntity<List<ChatRoomResponseDto>> getPublicRooms() {
-        return ResponseEntity.ok(chatService.getAllPublicRooms());
+    public ResponseEntity<List<ChatRoomResponseDto>> getPublicRooms(
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return ResponseEntity.ok(chatService.getAllPublicRooms(currentUser.getId()));
     }
 
     @GetMapping("/rooms/my")
-    @Operation(summary = "Mes salons")
+    @Operation(summary = "Toutes les conversations accessibles (publics, services, DM, groupes)")
     public ResponseEntity<List<ChatRoomResponseDto>> getMyRooms(
             @AuthenticationPrincipal UserDetailsImpl currentUser) {
         return ResponseEntity.ok(chatService.getRoomsForUser(currentUser.getId()));
     }
 
+    @GetMapping("/rooms/{roomId}")
+    @Operation(summary = "Détail d'un salon")
+    public ResponseEntity<ChatRoomResponseDto> getRoom(@PathVariable Long roomId,
+                                                       @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return ResponseEntity.ok(chatService.getRoom(roomId, currentUser.getId()));
+    }
+
     @PostMapping("/rooms")
-    @Operation(summary = "Créer un salon de groupe")
+    @Operation(summary = "Créer un groupe privé ou un salon public")
     public ResponseEntity<ChatRoomResponseDto> createRoom(
             @Valid @RequestBody ChatRoomRequestDto dto,
             @AuthenticationPrincipal UserDetailsImpl currentUser) {
@@ -57,10 +67,40 @@ public class ChatController {
     }
 
     @PatchMapping("/rooms/{roomId}/members/{userId}")
-    @Operation(summary = "Ajouter un membre à un salon")
+    @Operation(summary = "Ajouter un membre à un groupe")
     public ResponseEntity<ChatRoomResponseDto> addMember(@PathVariable Long roomId,
-                                                         @PathVariable Long userId) {
-        return ResponseEntity.ok(chatService.addMemberToRoom(roomId, userId));
+                                                         @PathVariable Long userId,
+                                                         @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return ResponseEntity.ok(chatService.addMemberToRoom(roomId, userId, currentUser.getId()));
+    }
+
+    @DeleteMapping("/rooms/{roomId}/members/me")
+    @Operation(summary = "Quitter un groupe")
+    public ResponseEntity<Void> leaveRoom(@PathVariable Long roomId,
+                                          @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        chatService.leaveRoom(roomId, currentUser.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/rooms/{roomId}/read")
+    @Operation(summary = "Marquer le salon comme lu")
+    public ResponseEntity<Void> markAsRead(@PathVariable Long roomId,
+                                           @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        chatService.markRoomAsRead(roomId, currentUser.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/unread-count")
+    @Operation(summary = "Nombre total de messages non lus")
+    public ResponseEntity<Map<String, Long>> unreadCount(@AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return ResponseEntity.ok(Map.of("count", chatService.getTotalUnread(currentUser.getId())));
+    }
+
+    /** Annuaire pour démarrer une conversation privée / créer un groupe */
+    @GetMapping("/contacts")
+    @Operation(summary = "Annuaire des agents actifs")
+    public ResponseEntity<List<ChatContactDto>> contacts(@AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return ResponseEntity.ok(chatService.getContacts(currentUser.getId()));
     }
 
     /** Conversation privée (DM) entre l'utilisateur courant et targetUserId */
@@ -87,16 +127,19 @@ public class ChatController {
 
     @GetMapping("/rooms/{roomId}/messages")
     @Operation(summary = "Historique des messages")
-    public ResponseEntity<List<ChatMessageResponseDto>> getRoomHistory(@PathVariable Long roomId) {
-        return ResponseEntity.ok(chatService.getRoomHistory(roomId));
+    public ResponseEntity<List<ChatMessageResponseDto>> getRoomHistory(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return ResponseEntity.ok(chatService.getRoomHistory(roomId, currentUser.getId()));
     }
 
     @GetMapping("/rooms/{roomId}/search")
     @Operation(summary = "Recherche dans l'historique §8.7")
     public ResponseEntity<List<ChatMessageResponseDto>> searchMessages(
             @PathVariable Long roomId,
-            @RequestParam String q) {
-        return ResponseEntity.ok(chatService.searchMessages(roomId, q));
+            @RequestParam String q,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return ResponseEntity.ok(chatService.searchMessages(roomId, q, currentUser.getId()));
     }
 
     @PostMapping("/messages")
@@ -106,6 +149,14 @@ public class ChatController {
             @AuthenticationPrincipal UserDetailsImpl currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(chatService.sendMessage(dto, currentUser.getId()));
+    }
+
+    @DeleteMapping("/messages/{messageId}")
+    @Operation(summary = "Supprimer (logiquement) un message")
+    public ResponseEntity<ChatMessageResponseDto> deleteMessage(
+            @PathVariable Long messageId,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return ResponseEntity.ok(chatService.deleteMessage(messageId, currentUser.getId()));
     }
 
     // ══════════════════════════════════════════════════════
@@ -128,8 +179,10 @@ public class ChatController {
 
     @GetMapping("/rooms/{roomId}/pinned")
     @Operation(summary = "Messages épinglés du salon")
-    public ResponseEntity<List<ChatMessageResponseDto>> getPinnedMessages(@PathVariable Long roomId) {
-        return ResponseEntity.ok(chatService.getPinnedMessages(roomId));
+    public ResponseEntity<List<ChatMessageResponseDto>> getPinnedMessages(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return ResponseEntity.ok(chatService.getPinnedMessages(roomId, currentUser.getId()));
     }
 
     @PostMapping("/messages/{messageId}/pin")

@@ -20,8 +20,21 @@ public class ChatRoomResponseDto {
     private String serviceCode;
     private boolean privateRoom;
 
+    /** Nom à afficher : nom de l'interlocuteur pour un DM, nom du salon sinon */
+    private String displayName;
+
+    /** Pour un DM : l'autre participant */
+    private Long otherUserId;
+    private String otherUserEmail;
+
     private List<String> memberNames;
+    private List<Long> memberIds;
     private int memberCount;
+
+    private Long createdById;
+
+    /** L'utilisateur courant peut gérer le salon (ajout de membres…) */
+    private boolean canManage;
 
     private String createdByFullName;
 

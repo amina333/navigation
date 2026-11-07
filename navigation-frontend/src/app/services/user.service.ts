@@ -40,9 +40,18 @@ export class UserService {
     return this.http.patch<User>(`${this.API_URL}/${id}/toggle-status`, {});
   }
 
-  // Reset user password
-  resetPassword(id: number): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.API_URL}/${id}/reset-password`, {});
+  // Renvoie les identifiants : nouveau mot de passe temporaire envoyé par e-mail
+  resetPassword(id: number): Observable<{ message: string; smtpConfigured: boolean }> {
+    return this.http.post<{ message: string; smtpConfigured: boolean }>(`${this.API_URL}/${id}/resend-credentials`, {});
+  }
+
+  // Diagnostic SMTP (admin)
+  getMailStatus(): Observable<{ smtpConfigured: boolean; host: string; port: number; from: string; outbox: string }> {
+    return this.http.get<any>(`${environment.apiUrl}/admin/mail/status`);
+  }
+
+  sendTestMail(to?: string): Observable<{ sent: boolean; message: string; error?: string }> {
+    return this.http.post<any>(`${environment.apiUrl}/admin/mail/test`, to ? { to } : {});
   }
 
   // Get users by role

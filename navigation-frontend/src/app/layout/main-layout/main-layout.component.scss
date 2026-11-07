@@ -211,6 +211,29 @@
   color: var(--text-primary, #111827);
 }
 
+/* ── Horloge (fuseau choisi + UTC) ───────── */
+.topbar-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-right: 0.75rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #0f172a;
+  text-decoration: none;
+  transition: border-color 0.15s;
+  &:hover { border-color: #bfdbfe; }
+
+  .tc-item { display: inline-flex; align-items: baseline; gap: 0.35rem; }
+  small { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #64748b; }
+  strong { font-size: 0.88rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tc-sep { width: 1px; height: 16px; background: #e2e8f0; }
+
+  @media (max-width: 720px) { display: none; }
+}
+
 /* ── Topbar Actions ─────────────────────── */
 .topbar-actions {
   display: flex;

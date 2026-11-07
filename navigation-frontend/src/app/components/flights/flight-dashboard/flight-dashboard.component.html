@@ -132,7 +132,7 @@
       <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
       </svg>
-      <input type="text" placeholder="Rechercher un vol, compagnie, aéroport..." [(ngModel)]="searchTerm" (input)="filterFlights()">
+      <input type="search" maxlength="60" placeholder="Rechercher un vol, compagnie, aéroport..." [(ngModel)]="searchTerm" (input)="filterFlights()">
       <span class="results-count" *ngIf="searchTerm">{{ filteredFlights.length }} résultat{{ filteredFlights.length !== 1 ? 's' : '' }}</span>
     </div>
 
@@ -419,31 +419,34 @@
       </div>
 
       <div class="modal-body">
-        <form [formGroup]="flightForm" (ngSubmit)="saveFlight()">
+        <form [formGroup]="flightForm" (ngSubmit)="saveFlight()" novalidate>
 
           <div class="form-section-title">Identification</div>
           <div class="form-row">
             <div class="form-field">
-              <label>Numéro de Vol</label>
-              <input type="text" formControlName="flightNumber" placeholder="ex: TN123">
+              <label for="f-number">Numéro de Vol <span class="req">*</span></label>
+              <input id="f-number" type="text" formControlName="flightNumber" placeholder="ex: TU712" maxlength="9" autocomplete="off">
+              <app-field-error [control]="fc('flightNumber')" label="Le numéro de vol"></app-field-error>
             </div>
             <div class="form-field">
-              <label>Compagnie</label>
-              <input type="text" formControlName="airline" placeholder="ex: Tunisair">
+              <label for="f-airline">Compagnie <span class="req">*</span></label>
+              <input id="f-airline" type="text" formControlName="airline" placeholder="ex: Tunisair" maxlength="60">
+              <app-field-error [control]="fc('airline')" label="La compagnie"></app-field-error>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-field">
-              <label>Type de Vol</label>
-              <select formControlName="type">
+              <label for="f-type">Type de Vol <span class="req">*</span></label>
+              <select id="f-type" formControlName="type">
                 <option value="">-- Choisir --</option>
                 <option value="DEPART">Départ</option>
                 <option value="ARRIVEE">Arrivée</option>
               </select>
+              <app-field-error [control]="fc('type')" label="Le type de vol"></app-field-error>
             </div>
             <div class="form-field">
-              <label>Statut Initial</label>
+              <label>Statut Initial <span class="req">*</span></label>
               <select formControlName="status">
                 <option value="PROGRAMME">Programmé</option>
                 <option value="EN_EMBARQUEMENT">Embarquement</option>
@@ -462,12 +465,14 @@
           <div formGroupName="aircraft">
             <div class="form-row">
               <div class="form-field">
-                <label>Type d'Aéronef</label>
-                <input type="text" formControlName="type" placeholder="ex: Boeing 737">
+                <label for="f-actype">Type d'Aéronef <span class="req">*</span></label>
+                <input id="f-actype" type="text" formControlName="type" placeholder="ex: Boeing 737-800" maxlength="50">
+                <app-field-error [control]="fc('aircraft.type')" label="Le type d'aéronef"></app-field-error>
               </div>
               <div class="form-field">
-                <label>Immatriculation</label>
-                <input type="text" formControlName="registration" placeholder="ex: TS-IME">
+                <label for="f-reg">Immatriculation <span class="req">*</span></label>
+                <input id="f-reg" type="text" formControlName="registration" placeholder="ex: TS-IME" maxlength="10" autocomplete="off">
+                <app-field-error [control]="fc('aircraft.registration')" label="L'immatriculation"></app-field-error>
               </div>
             </div>
           </div>
@@ -475,30 +480,39 @@
           <div class="form-section-title">Trajet</div>
           <div class="form-row">
             <div class="form-field">
-              <label>Aéroport de Départ</label>
-              <input type="text" formControlName="origin" placeholder="ex: TUN">
+              <label for="f-origin">Aéroport de Départ <span class="req">*</span></label>
+              <input id="f-origin" type="text" formControlName="origin" placeholder="ex: Tunis-Carthage (TUN)" maxlength="80">
+              <app-field-error [control]="fc('origin')" label="L'aéroport de départ"></app-field-error>
             </div>
             <div class="form-field">
-              <label>Aéroport d'Arrivée</label>
-              <input type="text" formControlName="destination" placeholder="ex: CDG">
+              <label for="f-dest">Aéroport d'Arrivée <span class="req">*</span></label>
+              <input id="f-dest" type="text" formControlName="destination" placeholder="ex: Paris-CDG (CDG)" maxlength="80">
+              <app-field-error [control]="fc('destination')" label="L'aéroport d'arrivée"
+                               groupError="sameRoute" [group]="flightForm"
+                               groupMessage="Doit être différent de l'aéroport de départ."></app-field-error>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-field">
-              <label>Heure Prévue</label>
-              <input type="datetime-local" formControlName="scheduledTime">
+              <label for="f-time">Heure Prévue <span class="req">*</span></label>
+              <input id="f-time" type="datetime-local" formControlName="scheduledTime">
+              <app-field-error [control]="fc('scheduledTime')" label="L'heure prévue"></app-field-error>
             </div>
             <div class="form-field">
-              <label>Piste</label>
-              <input type="text" formControlName="runway" placeholder="ex: 10L">
+              <label for="f-rwy">Piste</label>
+              <input id="f-rwy" type="text" formControlName="runway" placeholder="ex: 01, 19L" maxlength="7" autocomplete="off">
+              <app-field-error [control]="fc('runway')" label="La piste"></app-field-error>
             </div>
           </div>
 
           <div class="form-field">
-            <label>Porte d'Embarquement</label>
-            <input type="text" formControlName="gate" placeholder="ex: A12">
+            <label for="f-gate">Porte d'Embarquement</label>
+            <input id="f-gate" type="text" formControlName="gate" placeholder="ex: A12" maxlength="6" autocomplete="off">
+            <app-field-error [control]="fc('gate')" label="La porte"></app-field-error>
           </div>
+
+          <p class="form-hint-required"><span class="req">*</span> Champs obligatoires</p>
 
           <!-- Erreur backend -->
           <div class="form-error-banner" *ngIf="errorMessage">
@@ -510,7 +524,7 @@
 
           <div class="modal-footer">
             <button type="button" class="btn-cancel" (click)="closeFlightModal()">Annuler</button>
-            <button type="submit" class="btn-submit" [disabled]="saving || flightForm.invalid">
+            <button type="submit" class="btn-submit" [disabled]="saving">
               <span *ngIf="!saving">{{ editingFlight ? '✓ Mettre à jour' : '+ Créer le vol' }}</span>
               <span *ngIf="saving" class="btn-loading">Enregistrement...</span>
             </button>

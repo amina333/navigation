@@ -1,70 +1,139 @@
 <div class="settings-page">
-  <div class="settings-header">
-    <h1>Paramètres</h1>
-    <p>Gérez les paramètres de l'application et du système</p>
-  </div>
-
-  <div class="settings-content">
-    <div class="settings-section">
-      <h3>Paramètres généraux</h3>
-      <div class="setting-item">
-        <label>Nom de l'application</label>
-        <input type="text" value="SkyControl Navigation" disabled>
-      </div>
-      <div class="setting-item">
-        <label>Version</label>
-        <input type="text" value="1.0.0" disabled>
-      </div>
+  <header class="settings-header">
+    <div>
+      <h1>{{ 'settings.title' | t }}</h1>
+      <p>{{ 'settings.subtitle' | t }}</p>
     </div>
+    <span class="save-status" [class.saving]="status === 'saving'" [class.saved]="status === 'saved'" [class.err]="status === 'error'" aria-live="polite">
+      <ng-container *ngIf="status === 'saving'"><span class="spin"></span>{{ 'settings.saving' | t }}</ng-container>
+      <ng-container *ngIf="status === 'saved'">✓ {{ 'settings.saved' | t }}</ng-container>
+      <ng-container *ngIf="status === 'error'">⚠ {{ error }}</ng-container>
+    </span>
+  </header>
 
-    <div class="settings-section">
-      <h3>Préférences système</h3>
-      <div class="setting-item">
-        <label>Langue</label>
-        <select>
-          <option>Français</option>
-          <option>English</option>
+  <div class="settings-grid" *ngIf="prefs">
+
+    <!-- ═════════ Préférences système ═════════ -->
+    <section class="card">
+      <h2><span class="ico">🌐</span>{{ 'settings.preferences' | t }}</h2>
+
+      <div class="row">
+        <div class="row-text">
+          <label for="s-lang">{{ 'settings.language' | t }}</label>
+          <small>{{ 'settings.languageHint' | t }}</small>
+        </div>
+        <div class="seg" role="radiogroup" id="s-lang">
+          <button type="button" role="radio" [attr.aria-checked]="prefs.language === 'fr'" [class.active]="prefs.language === 'fr'" (click)="update({ language: 'fr' })">🇫🇷 Français</button>
+          <button type="button" role="radio" [attr.aria-checked]="prefs.language === 'en'" [class.active]="prefs.language === 'en'" (click)="update({ language: 'en' })">🇬🇧 English</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-text">
+          <label for="s-tz">{{ 'settings.timezone' | t }}</label>
+          <small>{{ 'settings.timezoneHint' | t }}</small>
+        </div>
+        <select id="s-tz" [ngModel]="prefs.timezone" (ngModelChange)="update({ timezone: $event })">
+          <option *ngFor="let tz of timezones" [value]="tz.id">{{ tz.label }} — {{ timeIn(tz.id).slice(0,5) }}</option>
         </select>
       </div>
-      <div class="setting-item">
-        <label>Fuseau horaire</label>
-        <select>
-          <option>Europe/Paris</option>
-          <option>UTC</option>
+
+      <div class="clock-preview">
+        <div class="clk main">
+          <span class="clk-label">{{ 'settings.preview' | t }} · {{ prefs.timezone }}</span>
+          <span class="clk-time">{{ timeIn(prefs.timezone) }}</span>
+          <span class="clk-date">{{ dateIn(prefs.timezone) }}</span>
+        </div>
+        <div class="clk" *ngIf="prefs.timezone !== 'UTC'">
+          <span class="clk-label">UTC / Zulu</span>
+          <span class="clk-time">{{ timeIn('UTC') }}</span>
+          <span class="clk-date">{{ dateIn('UTC') }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ Notifications ═════════ -->
+    <section class="card">
+      <h2><span class="ico">🔔</span>{{ 'settings.notifications' | t }}</h2>
+
+      <div class="row">
+        <div class="row-text">
+          <label for="s-mail">{{ 'settings.emailNotif' | t }}</label>
+          <small>{{ 'settings.emailNotifHint' | t }}</small>
+        </div>
+        <label class="switch">
+          <input id="s-mail" type="checkbox" [checked]="prefs.emailNotifications" (change)="update({ emailNotifications: $any($event.target).checked })">
+          <span class="track"></span>
+        </label>
+      </div>
+
+      <div class="row">
+        <div class="row-text">
+          <label for="s-browser">{{ 'settings.browserNotif' | t }}</label>
+          <small>{{ 'settings.browserNotifHint' | t }}</small>
+          <small class="warn" *ngIf="prefs.browserNotifications && permission === 'denied'">{{ 'settings.browserBlocked' | t }}</small>
+        </div>
+        <div class="row-ctrl">
+          <button type="button" class="test-btn" (click)="testBrowser()" [disabled]="permission === 'unsupported'">{{ 'settings.test' | t }}</button>
+          <label class="switch">
+            <input id="s-browser" type="checkbox" [checked]="prefs.browserNotifications" (change)="update({ browserNotifications: $any($event.target).checked })">
+            <span class="track"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-text">
+          <label for="s-sound">{{ 'settings.sound' | t }}</label>
+          <small>{{ 'settings.soundHint' | t }}</small>
+        </div>
+        <div class="row-ctrl">
+          <button type="button" class="test-btn" (click)="testSound()">▶ {{ 'settings.test' | t }}</button>
+          <label class="switch">
+            <input id="s-sound" type="checkbox" [checked]="prefs.notificationSounds" (change)="update({ notificationSounds: $any($event.target).checked })">
+            <span class="track"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ Sécurité ═════════ -->
+    <section class="card">
+      <h2><span class="ico">🛡️</span>{{ 'settings.security' | t }}</h2>
+
+      <div class="row">
+        <div class="row-text">
+          <label for="s-2fa">{{ 'settings.twoFactor' | t }}</label>
+          <small>{{ 'settings.twoFactorHint' | t }} <strong *ngIf="userEmail">({{ userEmail }})</strong></small>
+          <small class="warn" *ngIf="prefs.mailConfigured === false">{{ 'settings.twoFactorNoMail' | t }}</small>
+        </div>
+        <label class="switch" [class.disabled]="prefs.mailConfigured === false && !prefs.twoFactorEnabled">
+          <input id="s-2fa" type="checkbox" [checked]="prefs.twoFactorEnabled"
+                 [disabled]="prefs.mailConfigured === false && !prefs.twoFactorEnabled"
+                 (change)="update({ twoFactorEnabled: $any($event.target).checked })">
+          <span class="track"></span>
+        </label>
+      </div>
+
+      <div class="row">
+        <div class="row-text">
+          <label for="s-session">{{ 'settings.session' | t }}</label>
+          <small>{{ 'settings.sessionHint' | t }}</small>
+        </div>
+        <select id="s-session" [ngModel]="prefs.sessionTimeoutMinutes" (ngModelChange)="update({ sessionTimeoutMinutes: +$event })">
+          <option *ngFor="let m of timeouts" [ngValue]="m">{{ timeoutLabel(m) }}</option>
         </select>
       </div>
-    </div>
+    </section>
 
-    <div class="settings-section">
-      <h3>Notifications</h3>
-      <div class="setting-item">
-        <label>Notifications par email</label>
-        <input type="checkbox" checked>
-      </div>
-      <div class="setting-item">
-        <label>Notifications du navigateur</label>
-        <input type="checkbox" checked>
-      </div>
-      <div class="setting-item">
-        <label>Sons de notification</label>
-        <input type="checkbox" checked>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <h3>Sécurité</h3>
-      <div class="setting-item">
-        <label>Authentification à deux facteurs</label>
-        <input type="checkbox">
-      </div>
-      <div class="setting-item">
-        <label>Session automatique</label>
-        <select>
-          <option>30 minutes</option>
-          <option>1 heure</option>
-          <option>Jamais</option>
-        </select>
-      </div>
-    </div>
+    <!-- ═════════ Informations ═════════ -->
+    <section class="card">
+      <h2><span class="ico">ℹ️</span>{{ 'settings.general' | t }}</h2>
+      <dl class="info">
+        <div><dt>{{ 'settings.appName' | t }}</dt><dd>Skyguide Navigation · OACA</dd></div>
+        <div><dt>{{ 'settings.version' | t }}</dt><dd>1.0.0</dd></div>
+        <div><dt>{{ 'settings.account' | t }}</dt><dd>{{ userEmail }}</dd></div>
+      </dl>
+    </section>
   </div>
 </div>

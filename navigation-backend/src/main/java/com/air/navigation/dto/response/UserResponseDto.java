@@ -20,6 +20,9 @@ public class UserResponseDto {
     private String email;
     private String phoneNumber;
     private String badgeNumber;
+    private String matricule;
+    private String grade;
+    private String serviceNom;
     private boolean active;
     private List<String> roles;
     private LocalDateTime createdAt;

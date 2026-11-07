@@ -1,0 +1,342 @@
+// Statistiques — palette de référence dataviz (rôles), thème clair de l'application
+:host {
+  display: block;
+  --surface: #ffffff;
+  --plane: #f8fafc;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --hair: #e1e0d9;
+  --border: #e2e8f0;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --good: #0ca30c;
+  --good-text: #006300;
+  --critical: #d03b3b;
+}
+
+.stats-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+// ── En-tête ─────────────────────────────
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--series-1);
+  }
+  h1 { margin: 0.2rem 0 0.25rem; font-size: 1.6rem; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  p { margin: 0; font-size: 0.85rem; color: var(--ink-2); }
+}
+
+.btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover:not(:disabled) { background: var(--plane); }
+  &:disabled { opacity: 0.6; cursor: progress; }
+  .spin { animation: spin 0.8s linear infinite; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.state-box.error {
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.875rem;
+  .link { border: none; background: none; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+}
+
+// ── Indicateurs ─────────────────────────
+// 6 indicateurs : 6 / 3 / 2 colonnes pour ne jamais laisser une tuile orpheline
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1rem;
+
+  @media (max-width: 1400px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-height: 132px;
+  padding: 1.1rem 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+
+  &.sk {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+  }
+}
+
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.kpi-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 0.45rem;
+  border-radius: 10px;
+  &.i-blue { background: rgba(42, 120, 214, 0.1); color: var(--series-1); }
+  &.i-good { background: rgba(12, 163, 12, 0.1); color: var(--good); }
+}
+
+.kpi-label { font-size: 0.78rem; font-weight: 600; color: var(--ink-2); }
+
+.kpi-value {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+  small { margin-left: 2px; font-size: 1rem; font-weight: 600; color: var(--ink-2); }
+}
+
+.kpi-sub { font-size: 0.75rem; color: var(--muted); }
+
+.delta {
+  font-weight: 700;
+  color: var(--ink-2);
+  &.up { color: var(--good-text); }
+  &.down { color: var(--critical); }
+}
+
+// ── Grilles & cartes ────────────────────
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.grid-2-1 {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 1.15rem 1.25rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+
+  h2 { margin: 0; font-size: 0.98rem; font-weight: 700; color: var(--ink); }
+  p { margin: 0.15rem 0 0; font-size: 0.76rem; color: var(--muted); }
+
+  &.sub { margin-top: 1.4rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
+}
+
+.tbl-btn {
+  flex-shrink: 0;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  &:hover { background: var(--plane); color: var(--ink); }
+}
+
+.chart-box {
+  position: relative;
+  height: 240px;
+  &.tall { height: 290px; }
+  &.short { height: 180px; }
+}
+
+// ── Barres de répartition ───────────────
+.split-block { margin-bottom: 1.25rem; }
+
+.split-head, .split-vals {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+
+.split-head { margin-bottom: 0.4rem; font-weight: 600; color: var(--ink-2); }
+.split-vals { margin-top: 0.4rem; color: var(--muted); strong { color: var(--ink); } }
+
+.split-bar {
+  display: flex;
+  gap: 2px; // séparation par la surface, pas de bordure
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface);
+
+  .seg { flex-basis: 0; min-width: 4px; transition: flex-grow 0.4s; }
+  .s1 { background: var(--series-1); }
+  .s2 { background: var(--series-2); }
+  .s-muted { background: #c3c2b7; }
+}
+
+.room-types {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: auto;
+}
+
+.rt {
+  display: flex;
+  flex-direction: column;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  background: var(--plane);
+  .rt-label { font-size: 0.72rem; color: var(--ink-2); }
+  .rt-val { font-size: 1.2rem; font-weight: 700; color: var(--ink); }
+}
+
+// ── Tableaux ────────────────────────────
+.table-wrap { max-height: 290px; overflow: auto; }
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+
+  th {
+    position: sticky;
+    top: 0;
+    padding: 0.5rem 0.6rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--hair);
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  td { padding: 0.5rem 0.6rem; border-bottom: 1px solid #f1f0ec; color: var(--ink); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover td { background: var(--plane); }
+}
+
+.type-tag {
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--ink-2);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+// ── Liste utilisateurs ──────────────────
+.user-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #f1f0ec;
+    &:last-child { border-bottom: none; }
+    &.empty { justify-content: center; color: var(--muted); font-size: 0.85rem; }
+  }
+}
+
+.ul-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #3987e5, #1c5cab);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ul-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  strong { font-size: 0.86rem; color: var(--ink); }
+  small { font-size: 0.74rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+.ul-role {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(42, 120, 214, 0.08);
+  color: #1c5cab;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ul-status {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--good-text);
+  white-space: nowrap;
+  i { font-style: normal; color: var(--good); }
+  &.off { color: var(--muted); i { color: var(--muted); } }
+}
+
+// ── Responsive ──────────────────────────
+@media (max-width: 1100px) {
+  .grid-2-1 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .page-head h1 { font-size: 1.3rem; }
+}

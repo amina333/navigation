@@ -2,155 +2,105 @@
   <div class="dashboard-header">
     <div class="header-content">
       <div>
-        <h1>Tableau de bord Administrateur</h1>
-        <p>Vue d'ensemble du système de navigation aérienne</p>
+        <h1>{{ 'dash.title' | t }}</h1>
+        <p>{{ 'dash.subtitle' | t }}<span class="updated" *ngIf="data"> · {{ 'dash.updated' | t }} {{ data.generatedAt | appDate:'time' }}</span></p>
       </div>
       <div class="header-actions">
-        <button class="btn-primary" (click)="refreshData()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 4v6h-6"/>
-            <path d="M1 20v-6h6"/>
+        <div class="period-seg" role="tablist" [attr.aria-label]="'dash.today' | t">
+          <button *ngFor="let p of periods" role="tab" [class.active]="period === p" [attr.aria-selected]="period === p" (click)="setPeriod(p)">{{ periodLabel(p) }}</button>
+        </div>
+        <button class="btn-primary" (click)="refreshData()" [disabled]="isLoading">
+          <svg [class.spin]="isLoading" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
           </svg>
-          Actualiser
+          {{ 'dash.refresh' | t }}
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Quick Stats -->
+  <div class="dash-error" *ngIf="error" role="alert">{{ error }} <button (click)="refreshData()">{{ 'common.retry' | t }}</button></div>
+
+  <!-- ═════════ Indicateurs ═════════ -->
   <div class="stats-grid">
     <div class="stat-card" (click)="navigateTo('users')">
       <div class="stat-icon users">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-          <circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-        </svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ totalUsers }}</div>
-        <div class="stat-label">Utilisateurs</div>
-        <div class="stat-trend positive">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-            <polyline points="17 6 23 6 23 12"/>
-          </svg>
-          +12% ce mois
-        </div>
+        <div class="stat-value">{{ data?.users?.total ?? '–' }}</div>
+        <div class="stat-label">{{ 'dash.users' | t }} <span class="sub">· {{ data?.users?.newInPeriod ?? 0 }} {{ 'dash.newAccounts' | t }}</span></div>
+        <div class="stat-trend" [ngClass]="trendClass(data?.users?.trendPct)">{{ trendText(data?.users?.trendPct) }}</div>
       </div>
     </div>
 
     <div class="stat-card" (click)="navigateTo('flights')">
       <div class="stat-icon flights">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 2L11 13"/>
-          <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
-        </svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ totalFlights }}</div>
-        <div class="stat-label">Vols Actifs</div>
-        <div class="stat-trend positive">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-            <polyline points="17 6 23 6 23 12"/>
-          </svg>
-          +8% aujourd'hui
-        </div>
+        <div class="stat-value">{{ data?.flights?.activeNow ?? '–' }}</div>
+        <div class="stat-label">{{ 'dash.activeFlights' | t }} <span class="sub">· {{ data?.flights?.inPeriod ?? 0 }} {{ 'dash.flightsPlanned' | t }}</span></div>
+        <div class="stat-trend" [ngClass]="trendClass(data?.flights?.trendPct)">{{ trendText(data?.flights?.trendPct) }}</div>
       </div>
     </div>
 
-    <div class="stat-card" (click)="navigateTo('reports')">
+    <div class="stat-card" (click)="navigateTo('chat')">
       <div class="stat-icon reports">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
-          <polyline points="10 9 9 9 8 9"/>
-        </svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ totalReports }}</div>
-        <div class="stat-label">Rapports</div>
-        <div class="stat-trend neutral">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Stable
-        </div>
+        <div class="stat-value">{{ data?.messages?.inPeriod ?? '–' }}</div>
+        <div class="stat-label">{{ 'dash.messages' | t }} <span class="sub">· {{ data?.aiQueries?.inPeriod ?? 0 }} SkyAI</span></div>
+        <div class="stat-trend" [ngClass]="trendClass(data?.messages?.trendPct)">{{ trendText(data?.messages?.trendPct) }}</div>
       </div>
     </div>
 
-    <div class="stat-card">
+    <div class="stat-card" (click)="showSystem = !showSystem">
       <div class="stat-icon status">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-        </svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ systemStatus }}</div>
-        <div class="stat-label">Statut Système</div>
-        <div class="stat-trend positive">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          En ligne
+        <div class="stat-value">{{ data ? (data.system.availabilityPct | number:'1.0-1') + '%' : '–' }}</div>
+        <div class="stat-label">{{ 'dash.system' | t }} <span class="sub" *ngIf="data">· {{ data.system.servicesUp }}/{{ data.system.servicesTotal }} {{ 'dash.services' | t }}</span></div>
+        <div class="stat-trend" [ngClass]="data?.system?.status === 'OK' ? 'positive' : data?.system?.status === 'DEGRADED' ? 'warn' : 'negative'">
+          <span class="dot" aria-hidden="true">●</span> {{ systemLabel }} · {{ 'dash.uptime' | t }} {{ uptime }}
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Charts and Analytics -->
+  <!-- Détail des services -->
+  <div class="system-panel" *ngIf="showSystem && data">
+    <div class="sp-head">
+      <h3>{{ 'dash.systemDetail' | t }}</h3>
+      <span>{{ data.system.connectedUsers }} {{ 'dash.connected' | t }}</span>
+    </div>
+    <div class="sp-grid">
+      <div class="sp-item" *ngFor="let c of data.system.checks" [class.ko]="!c.ok">
+        <span class="sp-ico" aria-hidden="true">{{ c.ok ? '✓' : '!' }}</span>
+        <div><strong>{{ c.label }}</strong><small>{{ c.detail }}</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ Rôles & vols ═════════ -->
   <div class="analytics-grid">
     <div class="chart-card">
       <div class="card-header">
-        <h3>Statistiques par Rôle</h3>
-        <select class="time-filter" (change)="onTimeFilterChange($event)">
-          <option value="today">Aujourd'hui</option>
-          <option value="week">Cette semaine</option>
-          <option value="month">Ce mois</option>
-        </select>
+        <h3>{{ 'dash.byRole' | t }}</h3>
+        <span class="card-meta">{{ totalRoles }}</span>
       </div>
       <div class="chart-content">
         <div class="role-stats">
-          <div class="role-stat-item">
-            <div class="role-bar">
-              <div class="role-bar-fill admin" [style.width.%]="getRolePercentage('ADMIN')"></div>
-            </div>
+          <div class="role-stat-item" *ngFor="let r of roleOrder">
             <div class="role-info">
-              <span class="role-name">Administrateurs</span>
-              <span class="role-count">{{ getRoleCount('ADMIN') }}</span>
+              <span class="role-name">{{ ('role.' + r) | t }}</span>
+              <span class="role-count">{{ roleCount(r) }}</span>
             </div>
-          </div>
-          <div class="role-stat-item">
             <div class="role-bar">
-              <div class="role-bar-fill supervisor" [style.width.%]="getRolePercentage('SUPERVISEUR')"></div>
-            </div>
-            <div class="role-info">
-              <span class="role-name">Superviseurs</span>
-              <span class="role-count">{{ getRoleCount('SUPERVISEUR') }}</span>
-            </div>
-          </div>
-          <div class="role-stat-item">
-            <div class="role-bar">
-              <div class="role-bar-fill atc" [style.width.%]="getRolePercentage('ATC')"></div>
-            </div>
-            <div class="role-info">
-              <span class="role-name">Contrôle aérien</span>
-              <span class="role-count">{{ getRoleCount('ATC') }}</span>
-            </div>
-          </div>
-          <div class="role-stat-item">
-            <div class="role-bar">
-              <div class="role-bar-fill piste" [style.width.%]="getRolePercentage('PISTE')"></div>
-            </div>
-            <div class="role-info">
-              <span class="role-name">Piste</span>
-              <span class="role-count">{{ getRoleCount('PISTE') }}</span>
+              <div class="role-bar-fill single" [style.width.%]="rolePct(r)"></div>
             </div>
           </div>
         </div>
@@ -159,41 +109,37 @@
 
     <div class="chart-card">
       <div class="card-header">
-        <h3>Activité des Vols</h3>
-        <select class="time-filter" (change)="onTimeFilterChange($event)">
-          <option value="today">Aujourd'hui</option>
-          <option value="week">Cette semaine</option>
-          <option value="month">Ce mois</option>
-        </select>
+        <h3>{{ 'dash.flightActivity' | t }}</h3>
+        <span class="card-meta">{{ periodLabel(period) }}</span>
       </div>
       <div class="chart-content">
         <div class="flight-stats">
           <div class="flight-stat-item">
-            <div class="flight-stat-icon scheduled"></div>
+            <div class="flight-stat-icon scheduled">⏱</div>
             <div class="flight-stat-info">
-              <div class="flight-stat-value">{{ getFlightCountByStatus('PROGRAMME') }}</div>
-              <div class="flight-stat-label">Programmés</div>
+              <div class="flight-stat-value">{{ status('PROGRAMME') + status('EN_EMBARQUEMENT') }}</div>
+              <div class="flight-stat-label">{{ 'dash.scheduled' | t }}</div>
             </div>
           </div>
           <div class="flight-stat-item">
-            <div class="flight-stat-icon in-flight"></div>
+            <div class="flight-stat-icon in-flight">✈</div>
             <div class="flight-stat-info">
-              <div class="flight-stat-value">{{ getFlightCountByStatus('EN_VOL') }}</div>
-              <div class="flight-stat-label">En vol</div>
+              <div class="flight-stat-value">{{ inFlight }}</div>
+              <div class="flight-stat-label">{{ 'dash.inFlight' | t }}</div>
             </div>
           </div>
           <div class="flight-stat-item">
-            <div class="flight-stat-icon landed"></div>
+            <div class="flight-stat-icon landed">🛬</div>
             <div class="flight-stat-info">
-              <div class="flight-stat-value">{{ getFlightCountByStatus('ARRIVE') }}</div>
-              <div class="flight-stat-label">Atterris</div>
+              <div class="flight-stat-value">{{ arrived }}</div>
+              <div class="flight-stat-label">{{ 'dash.landed' | t }}</div>
             </div>
           </div>
           <div class="flight-stat-item">
-            <div class="flight-stat-icon delayed"></div>
+            <div class="flight-stat-icon delayed">!</div>
             <div class="flight-stat-info">
-              <div class="flight-stat-value">{{ getFlightCountByStatus('RETARDE') }}</div>
-              <div class="flight-stat-label">Retardés</div>
+              <div class="flight-stat-value">{{ status('RETARDE') }}<small *ngIf="status('ANNULE')"> · {{ status('ANNULE') }} {{ 'dash.cancelled' | t | lowercase }}</small></div>
+              <div class="flight-stat-label">{{ 'dash.delayed' | t }}</div>
             </div>
           </div>
         </div>
@@ -201,87 +147,60 @@
     </div>
   </div>
 
-  <!-- Recent Activities and Quick Actions -->
+  <!-- ═════════ Activités & actions ═════════ -->
   <div class="bottom-grid">
     <div class="recent-activities">
       <div class="card-header">
-        <h3>Activités Récentes</h3>
-        <button class="btn-link" (click)="viewAllActivities()">Voir tout</button>
+        <h3>{{ 'dash.recent' | t }}</h3>
+        <button class="btn-link" (click)="viewAllActivities()">{{ 'dash.viewAll' | t }}</button>
       </div>
-      <div class="activities-list" *ngIf="recentActivities.length > 0; else noActivities">
-        <div *ngFor="let activity of recentActivities" class="activity-item" [class]="activity.type">
+      <div class="activities-list" *ngIf="activities.length > 0; else noActivities">
+        <div *ngFor="let a of activities" class="activity-item" [ngClass]="activityIcon(a)">
           <div class="activity-icon">
-            <svg *ngIf="activity.type === 'success'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            <svg *ngIf="activity.type === 'warning'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <svg *ngIf="activity.type === 'error'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="15" y1="9" x2="9" y2="15"/>
-              <line x1="9" y1="9" x2="15" y2="15"/>
-            </svg>
+            <svg *ngIf="activityIcon(a) === 'success'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg *ngIf="activityIcon(a) === 'warning'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+            <svg *ngIf="activityIcon(a) === 'error'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <svg *ngIf="activityIcon(a) === 'info'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           </div>
           <div class="activity-content">
-            <div class="activity-title">{{ activity.title }}</div>
-            <div class="activity-time">{{ activity.time }}</div>
+            <div class="activity-title">{{ a.title }}</div>
+            <div class="activity-time" [title]="a.timestamp | appDate:'datetime'">{{ a.timestamp | ago }}</div>
           </div>
         </div>
       </div>
       <ng-template #noActivities>
-        <div class="no-activities">Aucune activité récente</div>
+        <div class="no-activities">{{ 'dash.noActivity' | t }}</div>
       </ng-template>
     </div>
 
     <div class="quick-actions">
       <div class="card-header">
-        <h3>Actions Rapides</h3>
+        <h3>{{ 'dash.quick' | t }}</h3>
       </div>
       <div class="actions-grid">
-        <button class="action-card" (click)="navigateTo('users/new')">
+        <button class="action-card" (click)="navigateTo('users')">
           <div class="action-icon add-user">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="8.5" cy="7" r="4"/>
-              <line x1="20" y1="8" x2="20" y2="14"/>
-              <line x1="23" y1="11" x2="17" y2="11"/>
-            </svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
           </div>
-          <span>Ajouter Utilisateur</span>
+          <span>{{ 'dash.addUser' | t }}</span>
         </button>
-        <button class="action-card" (click)="navigateTo('flights/new')">
+        <button class="action-card" (click)="navigateTo('flights')">
           <div class="action-icon add-flight">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 2L11 13"/>
-              <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
-              <line x1="11" y1="13" x2="17" y2="13"/>
-              <line x1="14" y1="11" x2="14" y2="17"/>
-            </svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           </div>
-          <span>Créer Vol</span>
+          <span>{{ 'dash.addFlight' | t }}</span>
         </button>
-        <button class="action-card" (click)="navigateTo('reports')">
+        <button class="action-card" (click)="navigateTo('statistics')">
           <div class="action-icon generate-report">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/>
-              <line x1="9" y1="15" x2="15" y2="15"/>
-            </svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg>
           </div>
-          <span>Générer Rapport</span>
+          <span>{{ 'dash.stats' | t }}</span>
         </button>
         <button class="action-card" (click)="navigateTo('settings')">
           <div class="action-icon settings">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
           </div>
-          <span>Paramètres</span>
+          <span>{{ 'dash.settings' | t }}</span>
         </button>
       </div>
     </div>

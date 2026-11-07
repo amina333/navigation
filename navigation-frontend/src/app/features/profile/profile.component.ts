@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, ValidationErrors } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, ValidationErrors, AbstractControl } from '@angular/forms';
+import { AppValidators, focusFirstInvalid } from '../../shared/validation/app-validators';
+import { FieldErrorComponent } from '../../shared/validation/field-error.component';
 import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { UserService } from '../../services/user.service';
@@ -20,7 +22,7 @@ interface ActivityItem {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, FieldErrorComponent, DatePipe],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss']
 })
@@ -102,18 +104,18 @@ export class ProfileComponent implements OnInit {
 
   initializeForms(): void {
     this.profileForm = this.fb.group({
-      firstName: ['', Validators.required],
-      lastName: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]],
-      phoneNumber: [''],
+      firstName: ['', [AppValidators.requiredTrimmed, Validators.minLength(2), Validators.maxLength(50), AppValidators.personName]],
+      lastName: ['', [AppValidators.requiredTrimmed, Validators.minLength(2), Validators.maxLength(50), AppValidators.personName]],
+      email: ['', [AppValidators.requiredTrimmed, AppValidators.email, Validators.maxLength(100)]],
+      phoneNumber: ['', [AppValidators.phone]],
       badgeNumber: [{ value: '', disabled: true }]
     });
 
     this.passwordForm = this.fb.group({
-      currentPassword: ['', Validators.required],
-      newPassword: ['', [Validators.required, Validators.minLength(8)]],
+      currentPassword: ['', [Validators.required, Validators.maxLength(100)]],
+      newPassword: ['', [Validators.required, AppValidators.strongPassword, Validators.maxLength(100)]],
       confirmPassword: ['', Validators.required]
-    }, { validators: this.passwordMatchValidator });
+    }, { validators: [this.passwordMatchValidator, AppValidators.different('currentPassword', 'newPassword', 'samePassword')] });
 
     // Listen to password changes for strength indicator
     this.passwordForm.get('newPassword')?.valueChanges.subscribe(password => {
@@ -121,15 +123,18 @@ export class ProfileComponent implements OnInit {
     });
   }
 
-  passwordMatchValidator(form: FormGroup): ValidationErrors | null {
+  passwordMatchValidator(form: AbstractControl): ValidationErrors | null {
     const newPassword = form.get('newPassword')?.value;
     const confirmPassword = form.get('confirmPassword')?.value;
 
-    if (newPassword !== confirmPassword) {
+    if (confirmPassword && newPassword !== confirmPassword) {
       return { passwordMismatch: true };
     }
     return null;
   }
+
+  pf(name: string) { return this.profileForm.get(name); }
+  pwf(name: string) { return this.passwordForm.get(name); }
 
   calculatePasswordStrength(password: string): void {
     if (!password) {
@@ -182,14 +187,18 @@ export class ProfileComponent implements OnInit {
   }
 
   saveProfile(): void {
-    if (this.profileForm.valid && this.currentUser) {
+    if (this.profileForm.invalid) {
+      focusFirstInvalid(this.profileForm);
+      return;
+    }
+    if (this.currentUser) {
       this.loading = true;
 
       const updateData = {
-        firstName: this.profileForm.value.firstName,
-        lastName: this.profileForm.value.lastName,
-        email: this.profileForm.value.email,
-        phoneNumber: this.profileForm.value.phoneNumber
+        firstName: (this.profileForm.value.firstName || '').trim(),
+        lastName: (this.profileForm.value.lastName || '').trim(),
+        email: (this.profileForm.value.email || '').trim().toLowerCase(),
+        phoneNumber: (this.profileForm.value.phoneNumber || '').trim()
       };
 
       this.userService.updateUser(this.currentUser.id, updateData).subscribe({
@@ -220,7 +229,10 @@ export class ProfileComponent implements OnInit {
   }
 
   changePassword(): void {
-    if (this.passwordForm.invalid) return;
+    if (this.passwordForm.invalid) {
+      this.passwordForm.markAllAsTouched();
+      return;
+    }
     this.isChangingPassword = true;
     this.passwordAlert = null;
 

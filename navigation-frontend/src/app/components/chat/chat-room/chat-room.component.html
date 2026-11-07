@@ -1,315 +1,420 @@
-<div class="chat-shell" (click)="closeContextMenu()">
+<div class="chat-shell" [class.show-thread]="mobileShowThread" [class.has-panel]="sidePanel !== 'none' && selectedRoom">
 
-  <!-- ══════════════════ SIDEBAR ══════════════════ -->
-  <aside class="chat-sidebar">
-
-    <!-- Header sidebar -->
-    <div class="sb-header">
-      <div class="sb-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-        <span>Communications</span>
+  <!-- ═════════════════ LISTE DES CONVERSATIONS ═════════════════ -->
+  <aside class="rooms-pane">
+    <header class="rooms-header">
+      <div class="rooms-title">
+        <h2>Communications</h2>
+        <span class="conn" [class.on]="isConnected" [title]="isConnected ? 'Connecté en temps réel' : 'Reconnexion…'"></span>
       </div>
-      <button class="btn-icon-sm" (click)="showCreateRoomModal = true" title="Nouveau salon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
+      <div class="rooms-actions">
+        <button class="icon-btn" (click)="openDmModal()" title="Nouvelle conversation privée" aria-label="Nouvelle conversation privée">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="9.5" y1="10.5" x2="14.5" y2="10.5"/></svg>
+        </button>
+        <button class="icon-btn" (click)="openGroupModal()" title="Nouveau groupe" aria-label="Nouveau groupe">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="rooms-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" [(ngModel)]="searchTerm" (ngModelChange)="applyRoomFilter()" placeholder="Rechercher une conversation…" maxlength="60" aria-label="Rechercher une conversation" />
+    </div>
+
+    <div class="filters" role="tablist">
+      <button *ngFor="let f of filters" role="tab" class="chip" [class.active]="activeFilter === f.key"
+              [attr.aria-selected]="activeFilter === f.key" (click)="setFilter(f.key)">
+        {{ f.label }}
+        <span class="chip-count" *ngIf="filterCount(f.key) > 0">{{ filterCount(f.key) }}</span>
       </button>
     </div>
 
-    <!-- Barre de recherche salons -->
-    <div class="sb-search">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-      </svg>
-      <input type="text" placeholder="Rechercher un salon..." [(ngModel)]="searchTerm" (input)="applyRoomFilter()">
-    </div>
-
-    <!-- Filtres -->
-    <div class="sb-filters">
-      <button [class.active]="activeFilter === 'all'"     (click)="setFilter('all')">Tous</button>
-      <button [class.active]="activeFilter === 'public'"  (click)="setFilter('public')"># Public</button>
-      <button [class.active]="activeFilter === 'service'" (click)="setFilter('service')">Service</button>
-      <button [class.active]="activeFilter === 'dm'"      (click)="setFilter('dm')">DM</button>
-      <button [class.active]="activeFilter === 'unread'"  (click)="setFilter('unread')">Non lus</button>
-    </div>
-
-    <!-- Liste des salons -->
-    <div class="room-list">
-      <div *ngFor="let room of filteredRooms"
-           class="room-item"
-           [class.active]="selectedRoom?.id === room.id"
-           (click)="selectRoom(room)">
-        <div class="room-icon" [ngClass]="'ri-' + (room.roomType || 'public').toLowerCase()">
-          {{ getRoomIcon(room) }}
-        </div>
-        <div class="room-meta">
-          <div class="room-top">
-            <span class="room-name">{{ room.name }}</span>
-            <span class="room-time" *ngIf="room.lastMessageAt">{{ formatTime(room.lastMessageAt) }}</span>
-          </div>
-          <div class="room-bottom">
-            <span class="room-preview">{{ room.lastMessagePreview || 'Aucun message' }}</span>
-            <span class="unread-badge" *ngIf="room.unreadCount > 0">{{ room.unreadCount }}</span>
-          </div>
-        </div>
+    <div class="rooms-list">
+      <div class="skeleton-list" *ngIf="loadingRooms">
+        <div class="skeleton-row" *ngFor="let i of [1,2,3,4,5]"><span class="sk-avatar"></span><span class="sk-lines"><i></i><i></i></span></div>
       </div>
 
-      <div class="empty-rooms" *ngIf="filteredRooms.length === 0">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-        <p>Aucun salon trouvé</p>
+      <div class="list-error" *ngIf="!loadingRooms && roomsError">
+        <p>{{ roomsError }}</p>
+        <button class="btn-link" (click)="loadRooms()">Réessayer</button>
       </div>
-    </div>
 
-    <!-- Connexion status -->
-    <div class="sb-status">
-      <span class="dot" [class.online]="isConnected" [class.offline]="!isConnected"></span>
-      <span>{{ isConnected ? 'Connecté en temps réel' : 'Mode hors-ligne' }}</span>
+      <button type="button" class="room-item" *ngFor="let room of filteredRooms; trackBy: trackById"
+              [class.active]="selectedRoom?.id === room.id"
+              [class.unread]="room.unreadCount > 0"
+              (click)="selectRoom(room)">
+        <span class="avatar" [ngSwitch]="room.roomType"
+              [style.background]="room.roomType === RoomType.PRIVATE_DM ? avatarColor(room.otherUserId) : null"
+              [class.av-service]="room.roomType === RoomType.SERVICE_CHANNEL"
+              [class.av-group]="room.roomType === RoomType.GROUP"
+              [class.av-public]="room.roomType === RoomType.PUBLIC">
+          <ng-container *ngSwitchCase="RoomType.PRIVATE_DM">{{ getInitials(room.displayName) }}</ng-container>
+          <ng-container *ngSwitchCase="RoomType.SERVICE_CHANNEL">#</ng-container>
+          <svg *ngSwitchCase="RoomType.GROUP" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <svg *ngSwitchDefault width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </span>
+        <span class="room-body">
+          <span class="room-top">
+            <span class="room-name">{{ room.displayName }}</span>
+            <span class="room-time">{{ formatListTime(room.lastMessageAt) }}</span>
+          </span>
+          <span class="room-bottom">
+            <span class="room-preview">{{ room.lastMessagePreview || roomSubtitle(room) }}</span>
+            <span class="unread-badge" *ngIf="room.unreadCount > 0">{{ room.unreadCount > 99 ? '99+' : room.unreadCount }}</span>
+          </span>
+        </span>
+      </button>
+
+      <div class="empty-list" *ngIf="!loadingRooms && !roomsError && filteredRooms.length === 0">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <p *ngIf="activeFilter === 'dm' && !searchTerm">Aucune conversation privée.</p>
+        <p *ngIf="activeFilter !== 'dm' || searchTerm">Aucune conversation trouvée.</p>
+        <button class="btn-primary sm" (click)="openDmModal()">Écrire à un agent</button>
+      </div>
     </div>
   </aside>
 
-  <!-- ══════════════════ ZONE PRINCIPALE ══════════════════ -->
-  <main class="chat-main" *ngIf="selectedRoom; else noRoom">
+  <!-- ═════════════════ FIL DE DISCUSSION ═════════════════ -->
+  <section class="thread-pane">
+    <ng-container *ngIf="selectedRoom; else noRoom">
 
-    <!-- Header salon -->
-    <div class="chat-header">
-      <div class="ch-left">
-        <div class="ch-icon">{{ getRoomIcon(selectedRoom) }}</div>
-        <div class="ch-info">
-          <h2>{{ selectedRoom.name }}</h2>
-          <span>{{ selectedRoom.memberCount }} membres · {{ selectedRoom.description || selectedRoom.roomType }}</span>
-        </div>
-      </div>
-      <div class="ch-actions">
-        <button class="btn-icon-sm" [class.active]="showSearchPanel" (click)="toggleSearchPanel()" title="Rechercher">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
+      <header class="thread-header">
+        <button class="icon-btn back-btn" (click)="backToList()" aria-label="Retour à la liste">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <button class="btn-icon-sm" [class.active]="showPinnedPanel" (click)="togglePinnedPanel()" title="Messages épinglés">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
-          </svg>
-          <span class="pin-count" *ngIf="pinnedMessages.length > 0">{{ pinnedMessages.length }}</span>
-        </button>
-        <button class="btn-icon-sm" (click)="showRoomInfo = !showRoomInfo" title="Infos">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Panneau recherche -->
-    <div class="search-panel" *ngIf="showSearchPanel">
-      <div class="sp-input-wrap">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input type="text" placeholder="Rechercher dans ce salon..." [(ngModel)]="searchQuery" (input)="onSearchInput()" autofocus>
-        <span class="sp-count" *ngIf="searchResults.length > 0">{{ searchResults.length }} résultat(s)</span>
-      </div>
-      <div class="sp-results">
-        <div *ngIf="isSearching" class="sp-loading">Recherche…</div>
-        <div *ngFor="let msg of searchResults" class="sp-result-item" (click)="showSearchPanel = false">
-          <div class="sp-sender">{{ msg.senderFullName }}</div>
-          <div class="sp-content">{{ msg.content }}</div>
-          <div class="sp-date">{{ formatTime(msg.sentAt) }}</div>
+        <span class="avatar md"
+              [style.background]="selectedRoom.roomType === RoomType.PRIVATE_DM ? avatarColor(selectedRoom.otherUserId) : null"
+              [class.av-service]="selectedRoom.roomType === RoomType.SERVICE_CHANNEL"
+              [class.av-group]="selectedRoom.roomType === RoomType.GROUP"
+              [class.av-public]="selectedRoom.roomType === RoomType.PUBLIC">
+          {{ selectedRoom.roomType === RoomType.PRIVATE_DM ? getInitials(selectedRoom.displayName)
+             : selectedRoom.roomType === RoomType.SERVICE_CHANNEL ? '#'
+             : selectedRoom.roomType === RoomType.GROUP ? '👥' : '🌐' }}
+        </span>
+        <div class="thread-title">
+          <h3>{{ selectedRoom.displayName }}</h3>
+          <p *ngIf="!typingLabel">{{ roomSubtitle(selectedRoom) }}</p>
+          <p class="typing-text" *ngIf="typingLabel">{{ typingLabel }}</p>
         </div>
-        <div *ngIf="!isSearching && searchQuery && searchResults.length === 0" class="sp-empty">
-          Aucun résultat pour "{{ searchQuery }}"
+        <div class="thread-actions">
+          <button class="icon-btn" [class.active]="sidePanel === 'search'" (click)="togglePanel('search')" title="Rechercher dans l'historique" aria-label="Rechercher">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <button class="icon-btn" [class.active]="sidePanel === 'pinned'" (click)="togglePanel('pinned')" title="Messages épinglés" aria-label="Messages épinglés">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+            <span class="dot-count" *ngIf="pinnedMessages.length">{{ pinnedMessages.length }}</span>
+          </button>
+          <button class="icon-btn" [class.active]="sidePanel === 'info'" (click)="togglePanel('info')" title="Informations" aria-label="Informations">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          </button>
         </div>
-      </div>
-    </div>
+      </header>
 
-    <!-- Panneau messages épinglés -->
-    <div class="pinned-panel" *ngIf="showPinnedPanel">
-      <div class="pp-header">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
-        </svg>
-        <span>{{ pinnedMessages.length }} message(s) épinglé(s)</span>
-      </div>
-      <div *ngFor="let msg of pinnedMessages" class="pp-item">
-        <span class="pp-sender">{{ msg.senderFullName }}</span>
-        <span class="pp-content">{{ msg.content }}</span>
-        <button class="pp-unpin" (click)="unpinMessage(msg)" title="Désépingler">✕</button>
-      </div>
-      <div *ngIf="pinnedMessages.length === 0" class="pp-empty">Aucun message épinglé</div>
-    </div>
-
-    <!-- Zone messages -->
-    <div class="messages-area" #scrollContainer>
-
-      <!-- Loader -->
-      <div class="msg-loading" *ngIf="loadingMessages">
-        <div class="spinner"></div>
-        <span>Chargement de l'historique…</span>
-      </div>
+      <!-- Bandeau épinglé -->
+      <button class="pinned-banner" *ngIf="pinnedMessages.length && sidePanel !== 'pinned'" (click)="jumpToMessage(pinnedMessages[0])">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+        <span class="pb-label">Épinglé</span>
+        <span class="pb-text">{{ pinnedMessages[0].content }}</span>
+      </button>
 
       <!-- Messages -->
-      <div *ngFor="let msg of messages; let i = index" class="msg-wrapper" [class.mine]="isMyMessage(msg)">
+      <div class="messages" #scrollContainer>
+        <div class="loading-msgs" *ngIf="loadingMessages"><span class="spinner"></span> Chargement des messages…</div>
 
-        <!-- Groupe avatar (premier d'une séquence) -->
-        <div class="msg-avatar" *ngIf="!isMyMessage(msg)">
-          {{ getInitials(msg.senderFullName) }}
+        <div class="thread-empty" *ngIf="!loadingMessages && messages.length === 0">
+          <span class="avatar xl"
+                [style.background]="selectedRoom.roomType === RoomType.PRIVATE_DM ? avatarColor(selectedRoom.otherUserId) : null"
+                [class.av-service]="selectedRoom.roomType === RoomType.SERVICE_CHANNEL"
+                [class.av-group]="selectedRoom.roomType === RoomType.GROUP"
+                [class.av-public]="selectedRoom.roomType === RoomType.PUBLIC">
+            {{ selectedRoom.roomType === RoomType.PRIVATE_DM ? getInitials(selectedRoom.displayName) : '#' }}
+          </span>
+          <h4>{{ selectedRoom.roomType === RoomType.PRIVATE_DM ? 'Début de votre conversation avec ' + selectedRoom.displayName : 'Bienvenue dans ' + selectedRoom.displayName }}</h4>
+          <p>Les échanges sont horodatés et archivés pour la traçabilité.</p>
         </div>
 
-        <div class="msg-col">
-          <!-- Nom expéditeur -->
-          <div class="msg-sender" *ngIf="!isMyMessage(msg)">
-            {{ msg.senderFullName }}
-            <span class="msg-time">{{ formatTime(msg.sentAt) }}</span>
-          </div>
+        <ng-container *ngFor="let group of groupedMessages; trackBy: trackByDay">
+          <div class="day-sep"><span>{{ group.day }}</span></div>
 
-          <!-- Bulle message -->
-          <div class="msg-bubble"
-               [class.bubble-mine]="isMyMessage(msg)"
-               [class.bubble-other]="!isMyMessage(msg)"
-               [class.pinned-bubble]="msg.pinned"
-               [class.deleted]="msg.deleted || msg.isDeleted"
-               (contextmenu)="openContextMenu($event, msg)">
+          <ng-container *ngFor="let msg of group.items; let i = index; trackBy: trackById">
+            <!-- Message système -->
+            <div class="system-msg" *ngIf="msg.messageType === MessageType.SYSTEM">{{ msg.content }} · {{ formatTime(msg.sentAt) }}</div>
 
-            <!-- Badge épinglé -->
-            <div class="pin-badge" *ngIf="msg.pinned">
-              📌 Épinglé par {{ msg.pinnedByFullName }}
-            </div>
+            <div *ngIf="msg.messageType !== MessageType.SYSTEM"
+                 class="msg-row" [id]="'msg-' + msg.id"
+                 [class.mine]="isMine(msg)"
+                 [class.grouped]="isGroupedWithPrevious(group.items, i)">
 
-            <!-- Contenu texte -->
-            <ng-container *ngIf="!msg.deleted && !msg.isDeleted">
+              <span class="avatar sm" *ngIf="!isMine(msg)" [style.background]="avatarColor(msg.senderId)"
+                    [style.visibility]="isGroupedWithPrevious(group.items, i) ? 'hidden' : 'visible'">
+                {{ getInitials(msg.senderFullName) }}
+              </span>
 
-              <!-- Image inline -->
-              <div class="attachment-image" *ngIf="isImage(msg) && msg.fileUrl">
-                <img [src]="msg.fileUrl" [alt]="msg.fileName" (click)="openUrl(msg.fileUrl!)">
-              </div>
+              <div class="bubble-wrap">
+                <span class="sender" *ngIf="!isMine(msg) && !isGroupedWithPrevious(group.items, i) && selectedRoom.roomType !== RoomType.PRIVATE_DM">
+                  {{ msg.senderFullName }}
+                </span>
 
-              <!-- Fichier joint -->
-              <div class="attachment-file" *ngIf="msg.messageType === MessageType.FILE && msg.fileUrl">
-                <div class="file-icon">📎</div>
-                <div class="file-info">
-                  <a [href]="msg.fileUrl" target="_blank" class="file-name">{{ msg.fileName }}</a>
-                  <span class="file-size">{{ formatFileSize(msg.fileSize) }}</span>
+                <div class="bubble" [class.deleted]="msg.deleted" [class.failed]="msg.status === MessageStatus.FAILED" [class.pinned]="msg.pinned">
+                  <span class="pin-flag" *ngIf="msg.pinned" title="Épinglé par {{ msg.pinnedByFullName }}">📌</span>
+
+                  <ng-container *ngIf="!msg.deleted && msg.fileUrl; else textContent">
+                    <img *ngIf="isImage(msg)" [src]="msg.fileUrl" [alt]="msg.fileName" class="attach-img" (click)="openUrl(msg.fileUrl)" loading="lazy" />
+                    <button *ngIf="!isImage(msg)" type="button" class="attach-file" (click)="openUrl(msg.fileUrl)">
+                      <span class="file-ico">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      </span>
+                      <span class="file-meta"><strong>{{ msg.fileName }}</strong><small>{{ formatFileSize(msg.fileSize) }}</small></span>
+                    </button>
+                  </ng-container>
+                  <ng-template #textContent><span class="text">{{ msg.content }}</span></ng-template>
+
+                  <span class="meta">
+                    <span *ngIf="msg.editedAt && !msg.deleted">modifié · </span>
+                    {{ formatTime(msg.sentAt) }}
+                    <ng-container *ngIf="isMine(msg) && !msg.deleted">
+                      <span *ngIf="msg.status === MessageStatus.SENDING" class="tick" title="Envoi…">🕓</span>
+                      <span *ngIf="msg.status !== MessageStatus.SENDING && msg.status !== MessageStatus.FAILED && selectedRoom.roomType === RoomType.PRIVATE_DM"
+                            class="tick" [class.read]="msg.read" [title]="msg.read ? 'Lu' : 'Envoyé'">{{ msg.read ? '✓✓' : '✓' }}</span>
+                    </ng-container>
+                  </span>
+                </div>
+
+                <button class="retry" *ngIf="msg.status === MessageStatus.FAILED" (click)="retry(msg)">Échec de l'envoi · Réessayer</button>
+
+                <!-- Actions au survol -->
+                <div class="msg-actions" *ngIf="!msg.deleted && msg.status !== MessageStatus.SENDING && msg.status !== MessageStatus.FAILED">
+                  <button (click)="togglePin(msg)" [title]="msg.pinned ? 'Désépingler' : 'Épingler'">{{ msg.pinned ? '📍' : '📌' }}</button>
+                  <button (click)="copyMessage(msg)" title="Copier" *ngIf="!msg.fileUrl">⧉</button>
+                  <button (click)="deleteMessage(msg)" title="Supprimer" *ngIf="isMine(msg)">🗑</button>
                 </div>
               </div>
+            </div>
+          </ng-container>
+        </ng-container>
+      </div>
 
-              <!-- Texte -->
-              <p class="msg-text" *ngIf="msg.content && msg.messageType === MessageType.TEXT">{{ msg.content }}</p>
+      <!-- Saisie -->
+      <footer class="composer">
+        <div class="composer-error" *ngIf="composerError" role="alert">{{ composerError }}</div>
+        <div class="composer-box" [class.invalid]="remainingChars < 0">
+          <button class="icon-btn" (click)="triggerFileUpload()" [disabled]="uploadingFile" title="Joindre un fichier (25 Mo max)" aria-label="Joindre un fichier">
+            <span class="spinner dark" *ngIf="uploadingFile"></span>
+            <svg *ngIf="!uploadingFile" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <input #fileInput type="file" hidden (change)="onFileSelected($event)" />
+          <textarea #composer rows="1"
+                    [(ngModel)]="newMessage"
+                    (input)="onComposerInput()"
+                    (keydown)="onComposerKeydown($event)"
+                    [attr.maxlength]="LIMITS.MESSAGE_MAX + 200"
+                    [placeholder]="'Message à ' + selectedRoom.displayName + '…'"
+                    aria-label="Votre message"></textarea>
+          <span class="char-count" *ngIf="remainingChars < 300" [class.over]="remainingChars < 0">{{ remainingChars }}</span>
+          <button class="send-btn" (click)="sendMessage()" [disabled]="!canSend" title="Envoyer (Entrée)" aria-label="Envoyer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <div class="composer-hint">Entrée pour envoyer · Maj + Entrée pour un retour à la ligne</div>
+      </footer>
+    </ng-container>
 
-              <!-- Statut upload en cours -->
-              <div class="status-fail" *ngIf="msg.status === 'FAILED'">❌ Échec d'envoi</div>
-              <div class="status-sending" *ngIf="msg.status === 'SENDING'">⏳</div>
-            </ng-container>
-
-            <p class="msg-deleted" *ngIf="msg.deleted || msg.isDeleted">Message supprimé</p>
-
-            <!-- Heure pour mes messages -->
-            <span class="msg-time-own" *ngIf="isMyMessage(msg)">{{ formatTime(msg.sentAt) }}</span>
-          </div>
+    <ng-template #noRoom>
+      <div class="no-room">
+        <div class="no-room-ico">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3>Sélectionnez une conversation</h3>
+        <p>Échangez en privé avec un agent, dans un salon de service ou dans un groupe.</p>
+        <div class="no-room-actions">
+          <button class="btn-primary" (click)="openDmModal()">Nouvelle conversation privée</button>
+          <button class="btn-ghost" (click)="openGroupModal()">Créer un groupe</button>
         </div>
       </div>
+    </ng-template>
+  </section>
 
-      <!-- En train d'écrire -->
-      <div class="typing-indicator" *ngIf="typingUsers.length > 0">
-        <span>{{ typingUsers.join(', ') }} écrit…</span>
-        <div class="dots"><span></span><span></span><span></span></div>
+  <!-- ═════════════════ PANNEAU LATÉRAL ═════════════════ -->
+  <aside class="side-panel" *ngIf="selectedRoom && sidePanel !== 'none'">
+    <header class="panel-header">
+      <h4>{{ sidePanel === 'info' ? 'Informations' : sidePanel === 'pinned' ? 'Messages épinglés' : 'Rechercher' }}</h4>
+      <button class="icon-btn" (click)="sidePanel = 'none'" aria-label="Fermer">✕</button>
+    </header>
+
+    <!-- Infos -->
+    <div class="panel-body" *ngIf="sidePanel === 'info'">
+      <div class="info-hero">
+        <span class="avatar xl"
+              [style.background]="selectedRoom.roomType === RoomType.PRIVATE_DM ? avatarColor(selectedRoom.otherUserId) : null"
+              [class.av-service]="selectedRoom.roomType === RoomType.SERVICE_CHANNEL"
+              [class.av-group]="selectedRoom.roomType === RoomType.GROUP"
+              [class.av-public]="selectedRoom.roomType === RoomType.PUBLIC">
+          {{ selectedRoom.roomType === RoomType.PRIVATE_DM ? getInitials(selectedRoom.displayName) : '#' }}
+        </span>
+        <h5>{{ selectedRoom.displayName }}</h5>
+        <p>{{ roomSubtitle(selectedRoom) }}</p>
+      </div>
+      <dl class="info-list">
+        <div *ngIf="selectedRoom.description && selectedRoom.roomType !== RoomType.PRIVATE_DM"><dt>Description</dt><dd>{{ selectedRoom.description }}</dd></div>
+        <div *ngIf="selectedRoom.createdByFullName && selectedRoom.roomType === RoomType.GROUP"><dt>Créé par</dt><dd>{{ selectedRoom.createdByFullName }}</dd></div>
+        <div *ngIf="selectedRoom.createdAt"><dt>Créé le</dt><dd>{{ selectedRoom.createdAt | appDate:'datetime' }}</dd></div>
+        <div><dt>Accès</dt><dd>{{
+          selectedRoom.roomType === RoomType.PRIVATE_DM ? 'Vous et ' + selectedRoom.displayName
+          : selectedRoom.roomType === RoomType.SERVICE_CHANNEL ? 'Agents ' + selectedRoom.serviceCode + ', superviseurs et administrateurs'
+          : selectedRoom.roomType === RoomType.GROUP ? 'Membres du groupe uniquement' : 'Tous les agents' }}</dd></div>
+      </dl>
+
+      <div class="members" *ngIf="selectedRoom.roomType === RoomType.GROUP">
+        <div class="members-head">
+          <span>{{ selectedRoom.memberCount }} membres</span>
+          <button class="btn-link" *ngIf="selectedRoom.canManage" (click)="openAddMemberModal()">+ Ajouter</button>
+        </div>
+        <div class="member" *ngFor="let n of selectedRoom.memberNames">
+          <span class="avatar xs" [style.background]="avatarColor(n)">{{ getInitials(n) }}</span>{{ n }}
+        </div>
+        <button class="btn-danger-ghost" (click)="leaveGroup()">Quitter le groupe</button>
       </div>
     </div>
 
-    <!-- Barre de saisie -->
-    <div class="chat-input-bar">
-      <div class="upload-overlay" *ngIf="uploadingFile">
-        <div class="spinner-sm"></div> Envoi du fichier…
-      </div>
-
-      <button class="btn-attach" (click)="triggerFileUpload()" title="Joindre un fichier" [disabled]="uploadingFile">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-        </svg>
+    <!-- Épinglés -->
+    <div class="panel-body" *ngIf="sidePanel === 'pinned'">
+      <p class="panel-empty" *ngIf="!pinnedMessages.length">Aucun message épinglé.<br><small>Survolez un message puis cliquez sur 📌.</small></p>
+      <button class="result-item" *ngFor="let p of pinnedMessages" (click)="jumpToMessage(p)">
+        <span class="ri-head"><strong>{{ p.senderFullName }}</strong><small>{{ p.sentAt | appDate:'datetime' }}</small></span>
+        <span class="ri-text">{{ p.fileName || p.content }}</span>
+        <small class="ri-foot" *ngIf="p.pinnedByFullName">Épinglé par {{ p.pinnedByFullName }}</small>
       </button>
+    </div>
 
-      <input type="file" #fileInput class="hidden-file" (change)="onFileSelected($event)"
-             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip">
-
-      <div class="input-wrap">
-        <textarea
-          [(ngModel)]="newMessage"
-          placeholder="Écrire un message…"
-          (keydown.enter)="onEnter($event)"
-          (input)="onTyping()"
-          rows="1"
-          class="msg-input">
-        </textarea>
+    <!-- Recherche -->
+    <div class="panel-body" *ngIf="sidePanel === 'search'">
+      <div class="rooms-search in-panel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="chat-search-input" type="search" [(ngModel)]="searchQuery" (input)="onSearchInput()" placeholder="Mot-clé, nom de fichier…" maxlength="100" />
       </div>
-
-      <button class="btn-send"
-              [disabled]="!newMessage.trim() || uploadingFile"
-              (click)="sendMessage()"
-              title="Envoyer">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-        </svg>
+      <p class="panel-hint" *ngIf="searchQuery.trim().length === 1">Saisissez au moins 2 caractères.</p>
+      <p class="panel-hint" *ngIf="isSearching">Recherche…</p>
+      <p class="panel-empty" *ngIf="!isSearching && searchQuery.trim().length >= 2 && !searchResults.length">Aucun résultat.</p>
+      <button class="result-item" *ngFor="let r of searchResults" (click)="jumpToMessage(r)">
+        <span class="ri-head"><strong>{{ r.senderFullName }}</strong><small>{{ r.sentAt | appDate:'datetime' }}</small></span>
+        <span class="ri-text">{{ r.fileName || r.content }}</span>
       </button>
     </div>
-  </main>
+  </aside>
 
-  <!-- Aucun salon sélectionné -->
-  <ng-template #noRoom>
-    <div class="no-room">
-      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
-      <h3>Sélectionnez un salon</h3>
-      <p>Choisissez une conversation dans la liste ou créez-en une nouvelle.</p>
-      <button class="btn-create-room" (click)="showCreateRoomModal = true">+ Nouveau salon</button>
-    </div>
-  </ng-template>
-
-</div>
-
-<!-- ══════════ CONTEXT MENU ══════════ -->
-<div class="context-menu"
-     *ngIf="contextMenuMsg"
-     [style.top.px]="contextMenuY"
-     [style.left.px]="contextMenuX"
-     (click)="$event.stopPropagation()">
-  <button *ngIf="!contextMenuMsg.pinned" (click)="pinMessage(contextMenuMsg)">
-    📌 Épingler
-  </button>
-  <button *ngIf="contextMenuMsg.pinned" (click)="unpinMessage(contextMenuMsg)">
-    📌 Désépingler
-  </button>
-</div>
-
-<!-- ══════════ MODAL NOUVEAU SALON ══════════ -->
-<div class="modal-overlay" *ngIf="showCreateRoomModal" (click)="showCreateRoomModal = false">
-  <div class="modal-box" (click)="$event.stopPropagation()">
-    <div class="modal-head">
-      <h3>Créer un salon</h3>
-      <button class="modal-close" (click)="showCreateRoomModal = false">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>Nom du salon *</label>
-        <input type="text" [(ngModel)]="newRoom.name" placeholder="ex: navigation-générale">
+  <!-- ═════════════════ MODALE : CONVERSATION PRIVÉE ═════════════════ -->
+  <div class="modal-backdrop" *ngIf="showDmModal" (click)="showDmModal = false">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dm-title" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div>
+          <h3 id="dm-title">Nouvelle conversation privée</h3>
+          <p>Échange one-to-one, visible uniquement par vous deux.</p>
+        </div>
+        <button class="icon-btn" (click)="showDmModal = false" aria-label="Fermer">✕</button>
+      </header>
+      <div class="rooms-search in-modal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="dm-search" type="search" [(ngModel)]="contactSearch" placeholder="Nom, e-mail, service ou rôle…" maxlength="60" />
       </div>
-      <div class="form-group">
-        <label>Description</label>
-        <input type="text" [(ngModel)]="newRoom.description" placeholder="Décrivez le salon…">
+      <div class="contact-list">
+        <button class="contact" *ngFor="let c of filteredContacts; trackBy: trackById" (click)="startDm(c)" [disabled]="creatingDm">
+          <span class="avatar" [style.background]="avatarColor(c.id)">{{ getInitials(c.fullName) }}</span>
+          <span class="contact-body">
+            <strong>{{ c.fullName }}</strong>
+            <small>{{ c.serviceNom || c.email }}</small>
+          </span>
+          <span class="role-tag" *ngFor="let r of c.roles">{{ roleLabel(r) }}</span>
+        </button>
+        <p class="panel-empty" *ngIf="!filteredContacts.length">Aucun agent ne correspond à la recherche.</p>
       </div>
-      <div class="form-group toggle-group">
-        <label>Salon privé</label>
-        <label class="toggle">
-          <input type="checkbox" [(ngModel)]="newRoom.privateRoom">
-          <span class="slider"></span>
-        </label>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-cancel" (click)="showCreateRoomModal = false">Annuler</button>
-      <button class="btn-confirm" [disabled]="!newRoom.name.trim()" (click)="createRoom()">Créer</button>
     </div>
   </div>
+
+  <!-- ═════════════════ MODALE : GROUPE / SALON ═════════════════ -->
+  <div class="modal-backdrop" *ngIf="showGroupModal" (click)="showGroupModal = false">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="grp-title" [formGroup]="groupForm" (ngSubmit)="submitGroup()" (click)="$event.stopPropagation()" novalidate>
+      <header class="modal-header">
+        <div>
+          <h3 id="grp-title">{{ groupForm.value.privateRoom ? 'Nouveau groupe' : 'Nouveau salon public' }}</h3>
+          <p>{{ groupForm.value.privateRoom ? 'Seuls les membres choisis pourront lire et écrire.' : 'Visible par tous les agents.' }}</p>
+        </div>
+        <button type="button" class="icon-btn" (click)="showGroupModal = false" aria-label="Fermer">✕</button>
+      </header>
+
+      <div class="modal-body">
+        <div class="seg" *ngIf="canCreatePublic">
+          <button type="button" [class.active]="groupForm.value.privateRoom" (click)="groupForm.patchValue({ privateRoom: true })">Groupe privé</button>
+          <button type="button" [class.active]="!groupForm.value.privateRoom" (click)="groupForm.patchValue({ privateRoom: false })">Salon public</button>
+        </div>
+
+        <label class="field">
+          <span>Nom <em>*</em></span>
+          <input type="text" formControlName="name" [maxlength]="LIMITS.ROOM_NAME_MAX" placeholder="ex. Coordination piste 09/27" [class.invalid]="fieldError('name')" />
+          <small class="err" *ngIf="fieldError('name')">{{ fieldError('name') }}</small>
+          <small class="hint" *ngIf="!fieldError('name')">{{ groupForm.value.name?.length || 0 }}/{{ LIMITS.ROOM_NAME_MAX }}</small>
+        </label>
+
+        <label class="field">
+          <span>Description</span>
+          <textarea formControlName="description" rows="2" [maxlength]="LIMITS.ROOM_DESC_MAX" placeholder="Objet du groupe (facultatif)" [class.invalid]="fieldError('description')"></textarea>
+          <small class="err" *ngIf="fieldError('description')">{{ fieldError('description') }}</small>
+          <small class="hint" *ngIf="!fieldError('description')">{{ groupForm.value.description?.length || 0 }}/{{ LIMITS.ROOM_DESC_MAX }}</small>
+        </label>
+
+        <div class="field" *ngIf="groupForm.value.privateRoom">
+          <span>Membres <em>*</em> <small class="muted">({{ selectedMemberIds.length }} sélectionné{{ selectedMemberIds.length > 1 ? 's' : '' }})</small></span>
+          <div class="selected-chips" *ngIf="selectedMemberIds.length">
+            <span class="sel-chip" *ngFor="let id of selectedMemberIds">{{ contactName(id) }}<button type="button" (click)="toggleMember(id)" aria-label="Retirer">✕</button></span>
+          </div>
+          <div class="rooms-search in-modal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" [(ngModel)]="contactSearch" [ngModelOptions]="{ standalone: true }" placeholder="Rechercher un agent…" maxlength="60" />
+          </div>
+          <div class="contact-list short">
+            <button type="button" class="contact" *ngFor="let c of filteredContacts; trackBy: trackById" (click)="toggleMember(c.id)" [class.selected]="isMemberSelected(c.id)">
+              <span class="check">{{ isMemberSelected(c.id) ? '✓' : '' }}</span>
+              <span class="avatar sm" [style.background]="avatarColor(c.id)">{{ getInitials(c.fullName) }}</span>
+              <span class="contact-body"><strong>{{ c.fullName }}</strong><small>{{ c.serviceNom || c.email }}</small></span>
+            </button>
+          </div>
+          <small class="err" *ngIf="groupForm.errors?.['membersRequired'] && (groupForm.touched || groupForm.dirty)">Sélectionnez au moins un membre.</small>
+        </div>
+
+        <div class="server-error" *ngIf="groupServerError" role="alert">{{ groupServerError }}</div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn-ghost" (click)="showGroupModal = false">Annuler</button>
+        <button type="submit" class="btn-primary" [disabled]="groupSubmitting">
+          <span class="spinner" *ngIf="groupSubmitting"></span>
+          {{ groupForm.value.privateRoom ? 'Créer le groupe' : 'Créer le salon' }}
+        </button>
+      </footer>
+    </form>
+  </div>
+
+  <!-- ═════════════════ MODALE : AJOUT DE MEMBRES ═════════════════ -->
+  <div class="modal-backdrop" *ngIf="showAddMemberModal" (click)="showAddMemberModal = false">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div><h3>Ajouter des membres</h3><p>{{ selectedRoom?.displayName }}</p></div>
+        <button class="icon-btn" (click)="showAddMemberModal = false" aria-label="Fermer">✕</button>
+      </header>
+      <div class="rooms-search in-modal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" [(ngModel)]="contactSearch" placeholder="Rechercher un agent…" maxlength="60" />
+      </div>
+      <div class="contact-list">
+        <button class="contact" *ngFor="let c of addableContacts; trackBy: trackById" (click)="addMember(c)">
+          <span class="avatar" [style.background]="avatarColor(c.id)">{{ getInitials(c.fullName) }}</span>
+          <span class="contact-body"><strong>{{ c.fullName }}</strong><small>{{ c.serviceNom || c.email }}</small></span>
+          <span class="add-tag">Ajouter</span>
+        </button>
+        <p class="panel-empty" *ngIf="!addableContacts.length">Tous les agents correspondants sont déjà membres.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" *ngIf="toast" role="status">{{ toast }}</div>
 </div>

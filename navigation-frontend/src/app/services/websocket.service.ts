@@ -135,6 +135,11 @@ export class WebSocketService {
       this.addNotification(notification);
     });
     
+    // Boîte personnelle du chat (une seule souscription STOMP, diffusée via chatInbox$)
+    this.subscribeToChannel('/user/queue/chat', (message) => {
+      try { this.chatInboxSubject.next(JSON.parse(message.body)); } catch {}
+    });
+
     // Subscribe to global flight updates
     this.subscribeToChannel('/topic/flights/updates', (message) => {
       const flightUpdate: FlightUpdateMessage = JSON.parse(message.body);
@@ -275,16 +280,32 @@ export class WebSocketService {
    * Send typing indicator for chat
    */
   sendTypingIndicator(roomId: number, isTyping: boolean): void {
-    const user = this.authService.getCurrentUser();
-    if (!user) return;
-    
-    this.sendMessage('/app/chat/typing', {
-      roomId,
-      userId: user.id,
-      userName: user.fullName,
-      isTyping,
-      timestamp: new Date()
-    });
+    // Doit correspondre à @MessageMapping("/chat.typing") → /app/chat.typing
+    this.sendMessage('/app/chat.typing', { roomId, typing: isTyping });
+  }
+
+  /**
+   * Événements personnels du chat (nouveau message privé / de groupe, ajout à un groupe…).
+   * Flux partagé : plusieurs composants peuvent écouter sans s'écraser.
+   */
+  private chatInboxSubject = new Subject<any>();
+  chatInbox$ = this.chatInboxSubject.asObservable();
+
+  subscribeToChatInbox(callback: (event: any) => void) {
+    return this.chatInbox$.subscribe(callback);
+  }
+
+  /** Erreurs renvoyées par le serveur pour les envois WebSocket (validation, accès) */
+  subscribeToChatErrors(callback: (event: { error: string }) => void): void {
+    this.subscribeToChannel('/user/queue/errors', (message) => callback(JSON.parse(message.body)));
+  }
+
+  subscribeToRoomTyping(roomId: number, callback: (event: any) => void): void {
+    this.subscribeToChannel(`/topic/chat/${roomId}/typing`, (message) => callback(JSON.parse(message.body)));
+  }
+
+  subscribeToRoomRead(roomId: number, callback: (event: any) => void): void {
+    this.subscribeToChannel(`/topic/chat/${roomId}/read`, (message) => callback(JSON.parse(message.body)));
   }
   
   /**
@@ -317,6 +338,8 @@ export class WebSocketService {
    */
   unsubscribeFromChatRoom(roomId: number): void {
     this.unsubscribeFromChannel(`/topic/chat/${roomId}`);
+    this.unsubscribeFromChannel(`/topic/chat/${roomId}/typing`);
+    this.unsubscribeFromChannel(`/topic/chat/${roomId}/read`);
   }
   
   /**

@@ -20,6 +20,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(new MessageResponseDto(ex.getMessage()));
     }
 
+    @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
+    public ResponseEntity<MessageResponseDto> handleDisabled(org.springframework.security.authentication.DisabledException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new MessageResponseDto("Ce compte est désactivé. Contactez votre administrateur."));
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<MessageResponseDto> handleAuthentication(org.springframework.security.core.AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new MessageResponseDto("Adresse e-mail ou mot de passe incorrect."));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<MessageResponseDto> handleAccessDeniedException(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -27,13 +39,18 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationErrors(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
+    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new java.util.LinkedHashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            errors.put(fieldName, error.getDefaultMessage());
+            String fieldName = error instanceof FieldError fe ? fe.getField() : error.getObjectName();
+            errors.putIfAbsent(fieldName, error.getDefaultMessage());
         });
-        return ResponseEntity.badRequest().body(errors);
+        Map<String, Object> body = new HashMap<>();
+        // Compatibilité : messages aussi accessibles à la racine par nom de champ
+        body.putAll(errors);
+        body.put("message", errors.values().stream().findFirst().orElse("Données invalides"));
+        body.put("errors", errors);
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(Exception.class)

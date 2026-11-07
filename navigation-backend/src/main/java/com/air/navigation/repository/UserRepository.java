@@ -17,6 +17,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByBadgeNumber(String badgeNumber);
 
+    boolean existsByMatricule(String matricule);
+
     @Query("SELECT u FROM User u WHERE u.active = true")
     List<User> findAllActiveUsers();
 

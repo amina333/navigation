@@ -6,11 +6,13 @@ import { UserService } from '../../../services/user.service';
 import { RoleService } from '../../../services/role.service';
 import { User, CreateUserRequest, UpdateUserRequest, UserRole } from '../../../models/user.model';
 import { Observable } from 'rxjs';
+import { AppValidators, focusFirstInvalid } from '../../../shared/validation/app-validators';
+import { FieldErrorComponent } from '../../../shared/validation/field-error.component';
 
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, DecimalPipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, DecimalPipe, FieldErrorComponent],
   templateUrl: './user-management.component.html',
   styleUrls: ['./user-management.component.scss']
 })
@@ -59,6 +61,7 @@ export class UserManagementComponent implements OnInit {
     this.initializeForm();
     this.loadUsers();
     this.initializeStats();
+    this.loadMailStatus();
   }
 
   private initializeStats(): void {
@@ -73,19 +76,59 @@ export class UserManagementComponent implements OnInit {
 
   private initializeForm(): void {
     this.userForm = this.fb.group({
-      firstName:   ['', Validators.required],
-      lastName:    ['', Validators.required],
-      email:       ['', [Validators.required, Validators.email]],
-      password:    [''],
-      phoneNumber: [''],
-      badgeNumber: [''],
-      matricule:   [''],   // UML
-      grade:       [''],   // UML
-      serviceNom:  [''],   // UML
+      firstName:   ['', [AppValidators.requiredTrimmed, Validators.minLength(2), Validators.maxLength(50), AppValidators.personName]],
+      lastName:    ['', [AppValidators.requiredTrimmed, Validators.minLength(2), Validators.maxLength(50), AppValidators.personName]],
+      email:       ['', [AppValidators.requiredTrimmed, AppValidators.email, Validators.maxLength(100)]],
+      password:    ['', this.passwordValidators(true)],
+      phoneNumber: ['', [AppValidators.phone]],
+      badgeNumber: ['', [AppValidators.code, Validators.maxLength(30)]],
+      matricule:   ['', [AppValidators.code, Validators.maxLength(30)]],   // UML
+      grade:       ['', [AppValidators.safeText, Validators.maxLength(60)]],   // UML
+      serviceNom:  ['', [AppValidators.safeText, Validators.maxLength(80)]],   // UML
       roles:       ['', Validators.required],
       active:      [true]
     });
   }
+
+  /** Mot de passe obligatoire et robuste à la création, facultatif (mais robuste) en modification */
+  private passwordValidators(required: boolean) {
+    return required
+      ? [AppValidators.requiredTrimmed, AppValidators.strongPassword, Validators.maxLength(100)]
+      : [AppValidators.strongPassword, Validators.maxLength(100)];
+  }
+
+  private setPasswordRequired(required: boolean): void {
+    const ctrl = this.userForm.get('password');
+    ctrl?.setValidators(this.passwordValidators(required));
+    ctrl?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  /** Message d'erreur serveur affiché dans la modale */
+  formError = '';
+  saving = false;
+  showPwd = false;
+  /** Création : envoyer les identifiants · Modification : prévenir l'utilisateur */
+  sendEmail = true;
+  successMessage = '';
+
+  /** Génère un mot de passe robuste conforme à la politique (12 caractères) */
+  generatePassword(): void {
+    const sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnpqrstuvwxyz', '23456789', '!@#$%&*?-_'];
+    const all = sets.join('');
+    const rand = (n: number) => {
+      const a = new Uint32Array(1);
+      crypto.getRandomValues(a);
+      return a[0] % n;
+    };
+    const chars = sets.map(s => s[rand(s.length)]);
+    while (chars.length < 12) chars.push(all[rand(all.length)]);
+    for (let i = chars.length - 1; i > 0; i--) { const j = rand(i + 1); [chars[i], chars[j]] = [chars[j], chars[i]]; }
+    this.userForm.patchValue({ password: chars.join('') });
+    this.userForm.get('password')?.markAsTouched();
+    this.showPwd = true;
+  }
+
+  uf(name: string) { return this.userForm.get(name); }
 
   loadUsers(): void {
     this.userService.getAllUsers().subscribe((users: User[]) => {
@@ -171,6 +214,12 @@ export class UserManagementComponent implements OnInit {
 
   editUser(user: User): void {
     this.editingUser = user;
+    this.formError = '';
+    this.sendEmail = true;
+    this.showPwd = false;
+    this.setPasswordRequired(false);
+    this.userForm.markAsPristine();
+    this.userForm.markAsUntouched();
     this.userForm.patchValue({
       firstName:   user.firstName,
       lastName:    user.lastName,
@@ -184,42 +233,75 @@ export class UserManagementComponent implements OnInit {
       roles:  user.roles[0] || '',
       active: user.active
     });
+    this.showCreateModal = true;
   }
 
   saveUser(): void {
-    if (!this.isFormValid()) return;
+    this.formError = '';
+    if (!this.isFormValid()) {
+      focusFirstInvalid(this.userForm);
+      return;
+    }
 
     const formValue = this.userForm.value;
-    
-    // Convert single role to array for backend
-    const userData = {
-      ...formValue,
-      roles: [formValue.roles] // Convert to array
-    };
+    const trim = (v: any) => typeof v === 'string' ? v.trim() : v;
 
-    if (this.editingUser) {
-      // Update existing user
-      this.userService.updateUser(this.editingUser.id, userData).subscribe({
-        next: () => {
-          this.loadUsers();
-          this.closeModal();
-        },
-        error: (err: any) => {
-          console.error('Error updating user:', err);
-        }
+    // Convert single role to array for backend + nettoyage des espaces
+    const userData: any = {
+      firstName:   trim(formValue.firstName),
+      lastName:    trim(formValue.lastName),
+      email:       trim(formValue.email)?.toLowerCase(),
+      password:    formValue.password || '',
+      phoneNumber: trim(formValue.phoneNumber) || '',
+      badgeNumber: trim(formValue.badgeNumber) || '',
+      matricule:   trim(formValue.matricule) || '',
+      grade:       trim(formValue.grade) || '',
+      serviceNom:  trim(formValue.serviceNom) || '',
+      active:      formValue.active !== false,
+      roles:       [formValue.roles]
+    };
+    if (this.editingUser) userData.notifyUser = this.sendEmail;
+    else userData.sendWelcomeEmail = this.sendEmail;
+    const wasEditing = !!this.editingUser;
+    const target = userData.email;
+
+    this.saving = true;
+    const request$ = this.editingUser
+      ? this.userService.updateUser(this.editingUser.id, userData)
+      : this.userService.createUser(userData);
+
+    request$.subscribe({
+      next: () => {
+        this.saving = false;
+        const mailed = this.sendEmail;
+        this.loadUsers();
+        this.closeModal();
+        const smtp = this.mailStatus?.smtpConfigured;
+        const mailNote = !mailed ? ''
+          : smtp ? (wasEditing ? ' · notification envoyée à ' : ' · identifiants envoyés à ') + target
+          : ' · e-mail NON envoyé (SMTP non configuré, copie dans mail-outbox)';
+        this.flash(`${wasEditing ? 'Compte mis à jour' : 'Compte créé'}${mailNote}.`, mailed && !smtp);
+      },
+      error: (err: any) => {
+        this.saving = false;
+        this.formError = this.extractServerError(err);
+      }
+    });
+  }
+
+  private extractServerError(err: any): string {
+    if (err?.status === 0) return 'Serveur injoignable. Vérifiez que le backend est démarré.';
+    if (err?.status === 403) return 'Accès refusé : action réservée aux administrateurs.';
+    const e = err?.error;
+    if (e?.errors) {
+      // Erreurs de validation backend → rattachées aux champs du formulaire
+      Object.entries(e.errors).forEach(([field, msg]) => {
+        const ctrl = this.userForm.get(field);
+        if (ctrl) { ctrl.setErrors({ server: msg }); ctrl.markAsTouched(); }
       });
-    } else {
-      // Create new user
-      this.userService.createUser(userData).subscribe({
-        next: () => {
-          this.loadUsers();
-          this.closeModal();
-        },
-        error: (err: any) => {
-          console.error('Error creating user:', err);
-        }
-      });
+      return e.message || 'Certains champs sont invalides.';
     }
+    return e?.message || 'Une erreur est survenue lors de l\'enregistrement.';
   }
 
   toggleUserStatus(user: User): void {
@@ -247,16 +329,36 @@ export class UserManagementComponent implements OnInit {
   }
 
   resetUserPassword(user: User): void {
-    if (confirm(`Réinitialiser le mot de passe de ${user.fullName} ?`)) {
-      this.userService.resetPassword(user.id).subscribe({
-        next: (response: any) => {
-          alert(response.message || 'Mot de passe réinitialisé avec succès');
-        },
-        error: (err: any) => {
-          console.error('Error resetting password:', err);
-        }
-      });
-    }
+    if (!confirm(`Renvoyer les identifiants à ${user.fullName} ?\n\nUn nouveau mot de passe temporaire sera généré et envoyé à ${user.email}. L'ancien ne fonctionnera plus.`)) return;
+    this.userService.resetPassword(user.id).subscribe({
+      next: r => this.flash(r.message, !r.smtpConfigured),
+      error: (err: any) => this.flash(err?.error?.message || 'Impossible de renvoyer les identifiants.', true)
+    });
+  }
+
+  // ── Diagnostic e-mail ─────────────────────────────────────────
+  mailStatus: { smtpConfigured: boolean; host: string; from: string; outbox: string } | null = null;
+  mailTesting = false;
+  mailTestResult: { sent: boolean; message: string; error?: string } | null = null;
+  toastWarn = false;
+
+  loadMailStatus(): void {
+    this.userService.getMailStatus().subscribe({ next: s => this.mailStatus = s, error: () => this.mailStatus = null });
+  }
+
+  sendTestMail(): void {
+    this.mailTesting = true;
+    this.mailTestResult = null;
+    this.userService.sendTestMail().subscribe({
+      next: r => { this.mailTesting = false; this.mailTestResult = r; },
+      error: err => { this.mailTesting = false; this.mailTestResult = { sent: false, message: err?.error?.message || 'Erreur lors du test.' }; }
+    });
+  }
+
+  private flash(message: string, warn = false): void {
+    this.successMessage = message;
+    this.toastWarn = warn;
+    setTimeout(() => this.successMessage = '', 6000);
   }
 
   // Selection methods
@@ -469,35 +571,30 @@ export class UserManagementComponent implements OnInit {
   closeModal(): void {
     this.showCreateModal = false;
     this.editingUser = null;
-    this.userForm.reset({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      phoneNumber: '',
-      badgeNumber: '',
-      roles: []
-    });
+    this.formError = '';
+    this.saving = false;
+    this.userForm.reset(this.emptyUser());
   }
 
   isFormValid(): boolean {
-    if (this.editingUser) {
-      return this.userForm.valid && (this.userForm.get('email')?.valid ?? false);
-    }
-    return this.userForm.valid && (this.userForm.get('password')?.valid ?? false);
+    return this.userForm.valid;
   }
 
   openAddUserModal(): void {
     this.editingUser = null;
-    this.userForm.reset({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      phoneNumber: '',
-      badgeNumber: '',
-      roles: []
-    });
+    this.formError = '';
+    this.sendEmail = true;
+    this.showPwd = false;
+    this.setPasswordRequired(true);
+    this.userForm.reset(this.emptyUser());
     this.showCreateModal = true;
+  }
+
+  private emptyUser() {
+    return {
+      firstName: '', lastName: '', email: '', password: '',
+      phoneNumber: '', badgeNumber: '', matricule: '', grade: '', serviceNom: '',
+      roles: '', active: true
+    };
   }
 }

@@ -66,7 +66,7 @@
       </div>
       
       <div class="card-content">
-        <form [formGroup]="profileForm" class="profile-form">
+        <form [formGroup]="profileForm" class="profile-form" (ngSubmit)="saveProfile()" novalidate>
           <div class="form-row">
             <div class="form-group">
               <label for="firstName">Prénom</label>
@@ -76,7 +76,9 @@
                 formControlName="firstName"
                 [readonly]="!editMode"
                 [class.editable]="editMode"
+                maxlength="50"
               >
+              <app-field-error [control]="pf('firstName')" label="Le prénom"></app-field-error>
             </div>
             <div class="form-group">
               <label for="lastName">Nom</label>
@@ -86,7 +88,9 @@
                 formControlName="lastName"
                 [readonly]="!editMode"
                 [class.editable]="editMode"
+                maxlength="50"
               >
+              <app-field-error [control]="pf('lastName')" label="Le nom"></app-field-error>
             </div>
           </div>
           
@@ -98,7 +102,9 @@
               formControlName="email"
               [readonly]="!editMode"
               [class.editable]="editMode"
+              maxlength="100"
             >
+            <app-field-error [control]="pf('email')" label="L'adresse e-mail"></app-field-error>
           </div>
           
           <div class="form-group">
@@ -109,13 +115,15 @@
               formControlName="phoneNumber"
               [readonly]="!editMode"
               [class.editable]="editMode"
-              placeholder="+41 XX XXX XX XX"
+              placeholder="+216 20 123 456"
+              maxlength="20"
             >
+            <app-field-error [control]="pf('phoneNumber')" label="Le téléphone"></app-field-error>
           </div>
           
           <div class="form-actions" *ngIf="editMode">
             <button type="button" class="btn-cancel" (click)="cancelEdit()">Annuler</button>
-            <button type="submit" class="btn-save" (click)="saveProfile()">Enregistrer</button>
+            <button type="submit" class="btn-save">Enregistrer</button>
           </div>
         </form>
       </div>
@@ -227,9 +235,7 @@
           formControlName="currentPassword"
           placeholder="Entrez votre mot de passe actuel"
         >
-        <div class="error-message" *ngIf="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
-          Le mot de passe actuel est requis
-        </div>
+        <app-field-error [control]="pwf('currentPassword')" label="Le mot de passe actuel"></app-field-error>
       </div>
 
       <div class="form-group">
@@ -238,7 +244,9 @@
           id="newPassword"
           type="password"
           formControlName="newPassword"
-          placeholder="Minimum 8 caractères"
+          placeholder="8+ car. : Aa, 0-9 et symbole"
+          maxlength="100"
+          autocomplete="new-password"
         >
         <!-- Barre de force améliorée -->
         <div class="password-strength">
@@ -247,10 +255,9 @@
           </div>
           <span class="strength-label" [ngClass]="passwordStrength">{{ getStrengthText() }}</span>
         </div>
-        <div class="error-message" *ngIf="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
-          <span *ngIf="passwordForm.get('newPassword')?.errors?.['required']">Le nouveau mot de passe est requis</span>
-          <span *ngIf="passwordForm.get('newPassword')?.errors?.['minlength']">Minimum 8 caractères</span>
-        </div>
+        <app-field-error [control]="pwf('newPassword')" label="Le nouveau mot de passe"
+                         groupError="samePassword" [group]="passwordForm"
+                         groupMessage="Le nouveau mot de passe doit être différent de l'actuel."></app-field-error>
       </div>
 
       <div class="form-group">
@@ -261,14 +268,14 @@
           formControlName="confirmPassword"
           placeholder="Confirmez le nouveau mot de passe"
         >
-        <div class="error-message" *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched">
-          Les mots de passe ne correspondent pas
-        </div>
+        <app-field-error [control]="pwf('confirmPassword')" label="La confirmation"
+                         groupError="passwordMismatch" [group]="passwordForm"
+                         groupMessage="Les mots de passe ne correspondent pas."></app-field-error>
       </div>
 
       <div class="modal-actions">
         <button type="button" class="btn-cancel" (click)="showPasswordModal = false; passwordAlert = null">Annuler</button>
-        <button type="button" class="btn-save" (click)="changePassword()" [disabled]="passwordForm.invalid || isChangingPassword">
+        <button type="button" class="btn-save" (click)="changePassword()" [disabled]="isChangingPassword">
           <span *ngIf="!isChangingPassword">Changer le mot de passe</span>
           <span *ngIf="isChangingPassword" class="loading">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

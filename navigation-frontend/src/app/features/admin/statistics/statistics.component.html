@@ -1,0 +1,255 @@
+<div class="stats-page">
+
+  <!-- ═════════ En-tête ═════════ -->
+  <header class="page-head">
+    <div>
+      <span class="eyebrow">Administration</span>
+      <h1>Statistiques de la plateforme</h1>
+      <p *ngIf="stats">Données consolidées au {{ stats.generatedAt | date:'dd/MM/yyyy à HH:mm' }} · 14 derniers jours pour les tendances</p>
+    </div>
+    <button class="btn-refresh" (click)="load()" [disabled]="loading">
+      <svg [class.spin]="loading" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+      Actualiser
+    </button>
+  </header>
+
+  <div class="state-box error" *ngIf="error" role="alert">
+    {{ error }} <button class="link" (click)="load()">Réessayer</button>
+  </div>
+
+  <!-- Squelette -->
+  <div class="kpi-grid" *ngIf="loading && !stats">
+    <div class="kpi sk" *ngFor="let i of [1,2,3,4,5,6,7,8]"></div>
+  </div>
+
+  <ng-container *ngIf="stats">
+
+    <!-- ═════════ Indicateurs clés ═════════ -->
+    <section class="kpi-grid" aria-label="Indicateurs clés">
+      <div class="kpi">
+        <span class="kpi-ico i-blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        <span class="kpi-label">Agents</span>
+        <span class="kpi-value">{{ kpi('users') }}</span>
+        <span class="kpi-sub">{{ kpi('activeUsers') }} actifs · +{{ kpi('newUsers30d') }} sur 30 j</span>
+      </div>
+
+      <div class="kpi">
+        <span class="kpi-ico i-blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+        </span>
+        <span class="kpi-label">Vols enregistrés</span>
+        <span class="kpi-value">{{ kpi('flights') }}</span>
+        <span class="kpi-sub">{{ kpi('flightsToday') }} aujourd'hui</span>
+      </div>
+
+      <div class="kpi">
+        <span class="kpi-ico i-good">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </span>
+        <span class="kpi-label">Ponctualité</span>
+        <span class="kpi-value">{{ kpi('onTimeRate') | number:'1.0-1' }}<small>%</small></span>
+        <span class="kpi-sub">{{ kpi('delayRate') | number:'1.0-1' }} % retards · {{ kpi('cancelRate') | number:'1.0-1' }} % annulations</span>
+      </div>
+
+      <div class="kpi">
+        <span class="kpi-ico i-blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <span class="kpi-label">Messages (7 j)</span>
+        <span class="kpi-value">{{ kpi('messages7d') }}</span>
+        <span class="kpi-sub">
+          <span class="delta" [class.up]="sparkTrend(stats.messagesDaily) > 0" [class.down]="sparkTrend(stats.messagesDaily) < 0">
+            {{ sparkTrend(stats.messagesDaily) > 0 ? '▲' : sparkTrend(stats.messagesDaily) < 0 ? '▼' : '■' }} {{ sparkTrend(stats.messagesDaily) | number:'1.0-0' }} %
+          </span>
+          vs semaine précédente
+        </span>
+      </div>
+
+      <div class="kpi">
+        <span class="kpi-ico i-blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>
+        </span>
+        <span class="kpi-label">Requêtes SkyAI (7 j)</span>
+        <span class="kpi-value">{{ kpi('aiQueries7d') }}</span>
+        <span class="kpi-sub">{{ kpi('aiQueries') }} au total</span>
+      </div>
+
+      <div class="kpi">
+        <span class="kpi-ico i-blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+        </span>
+        <span class="kpi-label">Conversations</span>
+        <span class="kpi-value">{{ kpi('rooms') }}</span>
+        <span class="kpi-sub">{{ kpi('messages') }} messages · {{ kpi('attachments') }} pièces jointes</span>
+      </div>
+    </section>
+
+    <!-- ═════════ Trafic ═════════ -->
+    <section class="grid-2-1">
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Trafic quotidien</h2><p>Vols prévus, retardés et annulés · 14 jours</p></div>
+          <button class="tbl-btn" (click)="toggleTable('traffic')" [attr.aria-pressed]="tableOpen['traffic']">{{ tableOpen['traffic'] ? 'Graphique' : 'Tableau' }}</button>
+        </header>
+        <div class="chart-box tall" [hidden]="tableOpen['traffic']"><canvas #chartCanvas data-key="traffic" role="img" aria-label="Courbe du trafic quotidien sur 14 jours"></canvas></div>
+        <ng-container *ngTemplateOutlet="tableTpl; context: { t: tables['traffic'], open: tableOpen['traffic'] }"></ng-container>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Répartition du trafic</h2><p>Sens des vols et statut des comptes</p></div>
+        </header>
+        <div class="split-block">
+          <div class="split-head"><span>Départs</span><span>Arrivées</span></div>
+          <div class="split-bar" role="img" [attr.aria-label]="'Départs ' + share(stats.flightsByType, 'DEPART') + ' %, arrivées ' + share(stats.flightsByType, 'ARRIVEE') + ' %'">
+            <span class="seg s1" [style.flex-grow]="valueOf(stats.flightsByType, 'DEPART') || 0.0001"></span>
+            <span class="seg s2" [style.flex-grow]="valueOf(stats.flightsByType, 'ARRIVEE') || 0.0001"></span>
+          </div>
+          <div class="split-vals">
+            <span><strong>{{ valueOf(stats.flightsByType, 'DEPART') }}</strong> · {{ share(stats.flightsByType, 'DEPART') }} %</span>
+            <span><strong>{{ valueOf(stats.flightsByType, 'ARRIVEE') }}</strong> · {{ share(stats.flightsByType, 'ARRIVEE') }} %</span>
+          </div>
+        </div>
+
+        <div class="split-block">
+          <div class="split-head"><span>Comptes actifs</span><span>Désactivés</span></div>
+          <div class="split-bar" role="img" [attr.aria-label]="'Actifs ' + share(stats.usersStatus, 'Actifs') + ' %'">
+            <span class="seg s1" [style.flex-grow]="valueOf(stats.usersStatus, 'Actifs') || 0.0001"></span>
+            <span class="seg s-muted" [style.flex-grow]="valueOf(stats.usersStatus, 'Désactivés') || 0.0001"></span>
+          </div>
+          <div class="split-vals">
+            <span><strong>{{ valueOf(stats.usersStatus, 'Actifs') }}</strong> · {{ share(stats.usersStatus, 'Actifs') }} %</span>
+            <span><strong>{{ valueOf(stats.usersStatus, 'Désactivés') }}</strong> · {{ share(stats.usersStatus, 'Désactivés') }} %</span>
+          </div>
+        </div>
+
+        <div class="room-types">
+          <div class="rt" *ngFor="let t of ['SERVICE_CHANNEL','GROUP','PUBLIC','PRIVATE_DM']">
+            <span class="rt-label">{{ roomTypeLabel(t) }}</span>
+            <span class="rt-val">{{ roomCount(t) }}</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid-2">
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Vols par statut</h2><p>Ensemble de la base</p></div>
+          <button class="tbl-btn" (click)="toggleTable('status')">{{ tableOpen['status'] ? 'Graphique' : 'Tableau' }}</button>
+        </header>
+        <div class="chart-box" [hidden]="tableOpen['status']"><canvas #chartCanvas data-key="status" role="img" aria-label="Vols par statut"></canvas></div>
+        <ng-container *ngTemplateOutlet="tableTpl; context: { t: tables['status'], open: tableOpen['status'] }"></ng-container>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Trafic par heure</h2><p>Heure prévue des vols</p></div>
+          <button class="tbl-btn" (click)="toggleTable('hours')">{{ tableOpen['hours'] ? 'Graphique' : 'Tableau' }}</button>
+        </header>
+        <div class="chart-box" [hidden]="tableOpen['hours']"><canvas #chartCanvas data-key="hours" role="img" aria-label="Vols par heure"></canvas></div>
+        <ng-container *ngTemplateOutlet="tableTpl; context: { t: tables['hours'], open: tableOpen['hours'] }"></ng-container>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Compagnies</h2><p>Nombre de vols par compagnie</p></div>
+          <button class="tbl-btn" (click)="toggleTable('airlines')">{{ tableOpen['airlines'] ? 'Graphique' : 'Tableau' }}</button>
+        </header>
+        <div class="chart-box" [hidden]="tableOpen['airlines']"><canvas #chartCanvas data-key="airlines" role="img" aria-label="Vols par compagnie"></canvas></div>
+        <ng-container *ngTemplateOutlet="tableTpl; context: { t: tables['airlines'], open: tableOpen['airlines'] }"></ng-container>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Agents par rôle</h2><p>Comptes actifs et inactifs</p></div>
+          <button class="tbl-btn" (click)="toggleTable('roles')">{{ tableOpen['roles'] ? 'Graphique' : 'Tableau' }}</button>
+        </header>
+        <div class="chart-box" [hidden]="tableOpen['roles']"><canvas #chartCanvas data-key="roles" role="img" aria-label="Agents par rôle"></canvas></div>
+        <ng-container *ngTemplateOutlet="tableTpl; context: { t: tables['roles'], open: tableOpen['roles'] }"></ng-container>
+      </article>
+    </section>
+
+    <!-- ═════════ Activité ═════════ -->
+    <section class="grid-2-1">
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Activité des agents</h2><p>Messages envoyés et requêtes SkyAI · 14 jours</p></div>
+          <button class="tbl-btn" (click)="toggleTable('activity')">{{ tableOpen['activity'] ? 'Graphique' : 'Tableau' }}</button>
+        </header>
+        <div class="chart-box tall" [hidden]="tableOpen['activity']"><canvas #chartCanvas data-key="activity" role="img" aria-label="Activité quotidienne"></canvas></div>
+        <ng-container *ngTemplateOutlet="tableTpl; context: { t: tables['activity'], open: tableOpen['activity'] }"></ng-container>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Usages de SkyAI</h2><p>Intentions détectées</p></div>
+          <button class="tbl-btn" (click)="toggleTable('intents')">{{ tableOpen['intents'] ? 'Graphique' : 'Tableau' }}</button>
+        </header>
+        <div class="chart-box tall" [hidden]="tableOpen['intents']"><canvas #chartCanvas data-key="intents" role="img" aria-label="Requêtes SkyAI par intention"></canvas></div>
+        <ng-container *ngTemplateOutlet="tableTpl; context: { t: tables['intents'], open: tableOpen['intents'] }"></ng-container>
+      </article>
+    </section>
+
+    <!-- ═════════ Listes ═════════ -->
+    <section class="grid-2">
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Derniers comptes créés</h2><p>Avec envoi automatique des identifiants</p></div>
+          <a class="tbl-btn" routerLink="/dashboard/users">Gérer</a>
+        </header>
+        <ul class="user-list">
+          <li *ngFor="let u of stats.recentUsers">
+            <span class="ul-avatar">{{ initials(u.fullName) }}</span>
+            <span class="ul-body">
+              <strong>{{ u.fullName }}</strong>
+              <small>{{ u.email }}</small>
+            </span>
+            <span class="ul-role">{{ roleLabel(u.roles[0]) }}</span>
+            <span class="ul-status" [class.off]="!u.active">
+              <i aria-hidden="true">{{ u.active ? '●' : '○' }}</i> {{ u.active ? 'Actif' : 'Inactif' }}
+            </span>
+          </li>
+          <li class="empty" *ngIf="!stats.recentUsers.length">Aucun compte.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <div><h2>Salons les plus actifs</h2><p>Hors conversations privées (confidentialité)</p></div>
+        </header>
+        <table class="data-table">
+          <thead><tr><th>Salon</th><th>Type</th><th class="num">Messages</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of stats.topRooms">
+              <td>{{ r.name }}</td>
+              <td><span class="type-tag">{{ roomTypeLabel(r.type) }}</span></td>
+              <td class="num">{{ r.messages }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <header class="card-head sub">
+          <div><h2>Comptes créés</h2><p>6 derniers mois</p></div>
+          <button class="tbl-btn" (click)="toggleTable('monthly')">{{ tableOpen['monthly'] ? 'Graphique' : 'Tableau' }}</button>
+        </header>
+        <div class="chart-box short" [hidden]="tableOpen['monthly']"><canvas #chartCanvas data-key="monthly" role="img" aria-label="Comptes créés par mois"></canvas></div>
+        <ng-container *ngTemplateOutlet="tableTpl; context: { t: tables['monthly'], open: tableOpen['monthly'] }"></ng-container>
+      </article>
+    </section>
+  </ng-container>
+</div>
+
+<!-- Vue tableau réutilisable -->
+<ng-template #tableTpl let-t="t" let-open="open">
+  <div class="table-wrap" *ngIf="open && t">
+    <table class="data-table">
+      <thead><tr><th *ngFor="let h of t.headers; let i = index" [class.num]="i > 0">{{ h }}</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of t.rows"><td *ngFor="let c of r; let i = index" [class.num]="i > 0">{{ c }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</ng-template>

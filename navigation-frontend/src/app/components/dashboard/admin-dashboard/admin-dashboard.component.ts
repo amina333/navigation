@@ -1,193 +1,147 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { UserService } from '../../../services/user.service';
-import { FlightService } from '../../../services/flight.service';
-import { UserRole } from '../../../models/user.model';
-import { FlightStatus } from '../../../models/flight.model';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
+import { PreferencesService } from '../../../core/preferences/preferences.service';
+import { TranslatePipe, AgoPipe, AppDatePipe } from '../../../core/preferences/pipes';
+
+type Period = 'today' | 'week' | 'month';
+
+interface DashboardData {
+  period: Period;
+  generatedAt: string;
+  users: { total: number; active: number; newInPeriod: number; newPrev: number; trendPct: number | null };
+  flights: { total: number; activeNow: number; inPeriod: number; prevPeriod: number; trendPct: number | null; byStatus: Record<string, number> };
+  messages: { inPeriod: number; prevPeriod: number; trendPct: number | null };
+  aiQueries: { inPeriod: number };
+  roles: Record<string, number>;
+  system: {
+    servicesUp: number; servicesTotal: number; availabilityPct: number; status: 'OK' | 'DEGRADED' | 'DOWN';
+    uptimeSeconds: number; connectedUsers: number;
+    checks: { key: string; label: string; ok: boolean; detail: string }[];
+  };
+}
+
+interface Activity { id: number; title: string; description?: string; type: string; category?: string; timestamp: string; }
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe, AgoPipe, AppDatePipe],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
 })
-export class AdminDashboardComponent implements OnInit {
+export class AdminDashboardComponent implements OnInit, OnDestroy {
 
-  totalUsers = 0;
-  totalFlights = 0;
-  totalReports = 0;
-  systemStatus = '99.8%';
+  data: DashboardData | null = null;
+  activities: Activity[] = [];
+  period: Period = 'today';
   isLoading = false;
+  error = '';
+  showSystem = false;
 
-  // User data for role statistics
-  allUsers: any[] = [];
-  roleStats = {
-    ADMIN: 0,
-    SUPERVISEUR: 0,
-    ATC: 0,
-    PISTE: 0
-  };
+  readonly roleOrder = ['ADMIN', 'SUPERVISEUR', 'ATC', 'PISTE', 'AIS', 'RH_FORMATION', 'QUALITE', 'CONSULTATION'];
+  readonly periods: Period[] = ['today', 'week', 'month'];
 
-  // Flight data for statistics
-  allFlights: any[] = [];
-  flightStats = {
-    PROGRAMME: 0,
-    EN_VOL: 0,
-    ARRIVE: 0,
-    RETARDE: 0
-  };
+  private refreshTimer: any;
 
-  // Recent activities will be loaded from backend
-  recentActivities: any[] = [];
-
-  constructor(
-    private router: Router,
-    private userService: UserService,
-    private flightService: FlightService
-  ) {}
+  constructor(private router: Router, private http: HttpClient, public prefs: PreferencesService) {}
 
   ngOnInit(): void {
     this.loadDashboardData();
+    // Rafraîchissement automatique toutes les 60 s
+    this.refreshTimer = setInterval(() => this.loadDashboardData(true), 60000);
   }
 
-  loadDashboardData(): void {
-    this.isLoading = true;
+  ngOnDestroy(): void { clearInterval(this.refreshTimer); }
 
-    // Load users count and role statistics
-    this.userService.getAllUsers().subscribe({
-      next: (users) => {
-        this.allUsers = users;
-        this.totalUsers = users.length;
-        this.calculateRoleStats();
-      },
-      error: (error) => {
-        console.error('Error loading users:', error);
+  loadDashboardData(silent = false): void {
+    if (!silent) this.isLoading = true;
+    this.error = '';
+    this.http.get<DashboardData>(`${environment.apiUrl}/admin/dashboard`, { params: { period: this.period } }).subscribe({
+      next: d => { this.data = d; this.isLoading = false; },
+      error: err => {
         this.isLoading = false;
+        this.error = err?.error?.message || this.prefs.t('common.error');
       }
     });
-
-    // Load flights count and status statistics
-    this.flightService.getAllFlights().subscribe({
-      next: (flights) => {
-        this.allFlights = flights;
-        this.totalFlights = flights.length;
-        this.calculateFlightStats();
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading flights:', error);
-        this.isLoading = false;
-      }
-    });
-
-    // Load reports count from backend
-    this.loadReportsCount();
-
-    // Load recent activities from backend
-    this.loadRecentActivities();
-  }
-
-  private calculateRoleStats(): void {
-    this.roleStats = {
-      ADMIN: 0,
-      SUPERVISEUR: 0,
-      ATC: 0,
-      PISTE: 0
-    };
-
-    this.allUsers.forEach(user => {
-      if (user.roles && user.roles.length > 0) {
-        const primaryRole = user.roles[0];
-        if (this.roleStats.hasOwnProperty(primaryRole)) {
-          this.roleStats[primaryRole as keyof typeof this.roleStats]++;
-        }
-      }
+    this.http.get<Activity[]>(`${environment.apiUrl}/activities`, { params: { limit: 6 } }).subscribe({
+      next: a => this.activities = a.slice(0, 6),
+      error: () => this.activities = []
     });
   }
 
-  private calculateFlightStats(): void {
-    this.flightStats = {
-      PROGRAMME: 0,
-      EN_VOL: 0,
-      ARRIVE: 0,
-      RETARDE: 0
-    };
-
-    this.allFlights.forEach(flight => {
-      if (flight.status && this.flightStats.hasOwnProperty(flight.status)) {
-        this.flightStats[flight.status as keyof typeof this.flightStats]++;
-      }
-    });
-  }
-
-  private loadReportsCount(): void {
-    // This should be implemented in the backend
-    // For now, we'll keep the mock value but it should be replaced
-    this.totalReports = 24;
-  }
-
-  private loadRecentActivities(): void {
-    // This should be implemented in the backend
-    // For now, we'll keep the mock data but it should be replaced
-    this.recentActivities = [
-      { title: 'Nouvel utilisateur inscrit', time: 'Il y a 5 minutes', type: 'success' },
-      { title: 'Vol AF1234 créé', time: 'Il y a 1 heure', type: 'success' },
-      { title: 'Rapport mensuel généré', time: 'Il y a 2 heures', type: 'warning' },
-      { title: 'Sauvegarde système réussie', time: 'Il y a 3 heures', type: 'success' },
-      { title: 'Mise à jour système terminée', time: 'Il y a 1 jour', type: 'success' }
-    ];
-  }
-
-  // Get role percentage for progress bars
-  getRolePercentage(role: string): number {
-    if (this.totalUsers === 0) return 0;
-    const count = this.roleStats[role as keyof typeof this.roleStats] || 0;
-    return Math.round((count / this.totalUsers) * 100);
-  }
-
-  // Get role count
-  getRoleCount(role: string): number {
-    return this.roleStats[role as keyof typeof this.roleStats] || 0;
-  }
-
-  // Get flight count by status
-  getFlightCountByStatus(status: string): number {
-    return this.flightStats[status as keyof typeof this.flightStats] || 0;
-  }
-
-  // Refresh data
-  refreshData(): void {
+  setPeriod(p: Period): void {
+    if (p === this.period) return;
+    this.period = p;
     this.loadDashboardData();
   }
 
-  // Time filter change handler
-  onTimeFilterChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const filter = select.value;
-    console.log('Time filter changed to:', filter);
-    // Implement time-based filtering logic here
+  refreshData(): void { this.loadDashboardData(); }
+
+  // ── Valeurs dérivées ─────────────────────────────────
+  periodLabel(p: Period): string {
+    return this.prefs.t(p === 'today' ? 'dash.today' : p === 'week' ? 'dash.week' : 'dash.month');
   }
 
-  // View all activities
-  viewAllActivities(): void {
-    this.router.navigate(['/dashboard/activities']);
+  trendClass(v: number | null | undefined): string {
+    if (v === null || v === undefined || v === 0) return 'neutral';
+    return v > 0 ? 'positive' : 'negative';
   }
 
-  // Navigation method
+  trendText(v: number | null | undefined): string {
+    if (v === null || v === undefined) return this.prefs.t('dash.noPrev');
+    const sign = v > 0 ? '+' : '';
+    return `${sign}${v.toLocaleString(this.prefs.locale)} % ${this.prefs.t('dash.vsPrev')}`;
+  }
+
+  get totalRoles(): number {
+    return this.data ? Object.values(this.data.roles).reduce((s, n) => s + n, 0) : 0;
+  }
+
+  get maxRole(): number {
+    return this.data ? Math.max(1, ...Object.values(this.data.roles)) : 1;
+  }
+
+  roleCount(r: string): number { return this.data?.roles?.[r] ?? 0; }
+
+  /** Barre relative au rôle le plus représenté (lisible même avec peu d'agents) */
+  rolePct(r: string): number { return Math.round((this.roleCount(r) / this.maxRole) * 100); }
+
+  status(s: string): number { return this.data?.flights?.byStatus?.[s] ?? 0; }
+
+  get inFlight(): number { return this.status('EN_VOL') + this.status('DECOLLAGE') + this.status('EN_APPROCHE'); }
+  get arrived(): number { return this.status('ARRIVE') + this.status('ATTERRI') + this.status('AU_SOL'); }
+
+  get systemLabel(): string {
+    const s = this.data?.system?.status;
+    return this.prefs.t(s === 'OK' ? 'dash.online' : s === 'DEGRADED' ? 'dash.degraded' : 'dash.down');
+  }
+
+  get uptime(): string {
+    const sec = this.data?.system?.uptimeSeconds ?? 0;
+    const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+    if (d > 0) return `${d} j ${h} h`;
+    if (h > 0) return `${h} h ${m} min`;
+    return `${m} min`;
+  }
+
+  activityIcon(a: Activity): 'success' | 'warning' | 'error' | 'info' {
+    return (['success', 'warning', 'error'].includes(a.type) ? a.type : 'info') as any;
+  }
+
+  viewAllActivities(): void { this.router.navigate(['/dashboard/activities']); }
+
   navigateTo(route: string): void {
-    // Routes absolues vers le dashboard
     const routeMap: Record<string, string> = {
-      'users':         '/dashboard/users',
-      'users/new':     '/dashboard/users',
-      'flights':       '/dashboard/flights',
-      'flights/new':   '/dashboard/flights',
-      'reports':       '/dashboard/activities',
-      'settings':      '/dashboard/settings',
-      'activities':    '/dashboard/activities',
+      'users': '/dashboard/users',
+      'flights': '/dashboard/flights',
+      'chat': '/dashboard/chat',
+      'statistics': '/dashboard/statistics',
+      'settings': '/dashboard/settings',
+      'activities': '/dashboard/activities'
     };
-    const target = routeMap[route] || `/dashboard/${route}`;
-    this.router.navigate([target]);
+    this.router.navigate([routeMap[route] || `/dashboard/${route}`]);
   }
 }

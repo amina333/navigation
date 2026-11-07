@@ -48,10 +48,20 @@ public class UserController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Mettre à jour un utilisateur")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or #id == authentication.principal.id")
     public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long id,
-                                                      @Valid @RequestBody CreateUserRequestDto dto) {
-        return ResponseEntity.ok(userService.updateUser(id, dto));
+                                                      @Valid @RequestBody com.air.navigation.dto.request.UpdateUserRequestDto dto,
+                                                      org.springframework.security.core.Authentication authentication) {
+        // Un agent peut modifier son propre profil ; rôles / statut / matricule restent réservés à l'ADMIN
+        boolean isAdmin = authentication.getAuthorities().stream().anyMatch(a -> "ADMIN".equals(a.getAuthority()));
+        return ResponseEntity.ok(userService.updateUser(id, dto, isAdmin));
+    }
+
+    @PostMapping("/{id}/resend-credentials")
+    @Operation(summary = "Renvoyer les identifiants (nouveau mot de passe temporaire par e-mail)")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> resendCredentials(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.resendCredentials(id));
     }
 
     @DeleteMapping("/{id}")

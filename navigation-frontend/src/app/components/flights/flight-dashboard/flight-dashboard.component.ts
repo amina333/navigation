@@ -8,11 +8,13 @@ import { NotificationService } from '../../../services/notification.service';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
+import { AppValidators, focusFirstInvalid, toUpperTrim } from '../../../shared/validation/app-validators';
+import { FieldErrorComponent } from '../../../shared/validation/field-error.component';
 
 @Component({
   selector: 'app-flight-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatePipe, FieldErrorComponent],
   templateUrl: './flight-dashboard.component.html',
   styleUrls: ['./flight-dashboard.component.scss']
 })
@@ -73,21 +75,32 @@ export class FlightDashboardComponent implements OnInit, OnDestroy {
 
   private initializeForm(): void {
     this.flightForm = this.fb.group({
-      flightNumber: ['', Validators.required],
-      airline: ['', Validators.required],
-      type: ['COMMERCIAL' as FlightType, Validators.required],
+      flightNumber: ['', [AppValidators.requiredTrimmed, AppValidators.flightNumber, Validators.maxLength(9)]],
+      airline: ['', [AppValidators.requiredTrimmed, Validators.minLength(2), Validators.maxLength(60), AppValidators.safeText]],
+      type: ['', Validators.required],
       aircraft: this.fb.group({
-        type: ['', Validators.required],
-        registration: ['', Validators.required]
+        type: ['', [AppValidators.requiredTrimmed, Validators.maxLength(50), AppValidators.safeText]],
+        registration: ['', [AppValidators.requiredTrimmed, AppValidators.registration, Validators.maxLength(10)]]
       }),
-      origin: ['', Validators.required],
-      destination: ['', Validators.required],
-      scheduledTime: ['', Validators.required],
+      origin: ['', [AppValidators.requiredTrimmed, Validators.maxLength(80), AppValidators.placeName]],
+      destination: ['', [AppValidators.requiredTrimmed, Validators.maxLength(80), AppValidators.placeName]],
+      scheduledTime: ['', [Validators.required, AppValidators.dateWithinDays(30, 365)]],
       status: ['PROGRAMME' as FlightStatus, Validators.required],
-      runway: [''],
-      gate: ['']
+      runway: ['', [AppValidators.runway]],
+      gate: ['', [AppValidators.gate, Validators.maxLength(6)]]
+    }, { validators: AppValidators.different('origin', 'destination', 'sameRoute') });
+
+    // Saisie normalisée en majuscules pour les codes (TU712, TS-IME, 27L, A12)
+    ['flightNumber', 'aircraft.registration', 'runway', 'gate'].forEach(path => {
+      const ctrl = this.flightForm.get(path);
+      ctrl?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(v => {
+        if (typeof v === 'string' && v !== v.toUpperCase()) ctrl.setValue(v.toUpperCase(), { emitEvent: false });
+      });
     });
   }
+
+  /** Raccourci template : contrôle par chemin */
+  fc(path: string) { return this.flightForm.get(path); }
 
   private loadData(): void {
     this.loading = true;
@@ -181,9 +194,11 @@ export class FlightDashboardComponent implements OnInit, OnDestroy {
 
   openCreateFlightModal(): void {
     this.editingFlight = null;
+    this.errorMessage = '';
     this.flightForm.reset({
-      type: 'COMMERCIAL',
-      status: 'PROGRAMME'
+      type: '',
+      status: 'PROGRAMME',
+      aircraft: { type: '', registration: '' }
     });
     this.showFlightModal = true;
   }
@@ -202,10 +217,11 @@ export class FlightDashboardComponent implements OnInit, OnDestroy {
     this.flightForm.patchValue({
       flightNumber: flight.flightNumber,
       airline: flight.airline,
-      type: flight.flightType || flight.type || 'COMMERCIAL',
+      type: flight.flightType || flight.type || '',
       origin: flight.origin,
       destination: flight.destination,
-      scheduledTime: flight.scheduledTime,
+      // datetime-local attend « yyyy-MM-ddTHH:mm »
+      scheduledTime: flight.scheduledTime ? String(flight.scheduledTime).substring(0, 16) : '',
       status: flight.status,
       runway: flight.runway || '',
       gate: flight.gate || ''
@@ -258,10 +274,30 @@ export class FlightDashboardComponent implements OnInit, OnDestroy {
   }
 
   saveFlight(): void {
-    if (this.flightForm.invalid) return;
+    this.errorMessage = '';
+    if (this.flightForm.invalid) {
+      focusFirstInvalid(this.flightForm);
+      if (this.flightForm.hasError('sameRoute')) {
+        this.errorMessage = 'L\'aéroport de départ et l\'aéroport d\'arrivée doivent être différents.';
+      }
+      return;
+    }
 
     this.saving = true;
-    const formValue = this.flightForm.value;
+    const raw = this.flightForm.value;
+    const formValue = {
+      ...raw,
+      flightNumber: toUpperTrim(raw.flightNumber),
+      airline: (raw.airline || '').trim(),
+      origin: (raw.origin || '').trim(),
+      destination: (raw.destination || '').trim(),
+      runway: toUpperTrim(raw.runway),
+      gate: toUpperTrim(raw.gate),
+      aircraft: {
+        type: (raw.aircraft?.type || '').trim(),
+        registration: toUpperTrim(raw.aircraft?.registration)
+      }
+    };
 
     // Convertir la datetime-local en ISO-8601 attendu par le backend
     const rawTime: string = formValue.scheduledTime || '';
@@ -421,6 +457,10 @@ export class FlightDashboardComponent implements OnInit, OnDestroy {
 
   /** Traduit les erreurs backend en messages lisibles pour l'utilisateur */
   private parseErrorMessage(error: any): string {
+    // Erreurs de validation renvoyées par le backend (Bean Validation) : message précis du champ
+    if (error?.status === 400 && error?.error?.errors && error.error.message) {
+      return error.error.message;
+    }
     const raw: string = error?.error?.message || error?.message || '';
 
     // Erreurs de désérialisation JSON (enum invalide, format date, etc.)

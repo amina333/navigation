@@ -25,25 +25,30 @@ export enum MessageStatus {
   FAILED    = 'FAILED'
 }
 
-// Alias pour rétrocompatibilité avec le composant existant
+// Alias pour rétrocompatibilité
 export { RoomType as ChatRoomType };
 
 export interface ChatRoom {
   id: number;
   name: string;
+  /** Nom de l'interlocuteur pour un DM, libellé du service pour un salon de service */
+  displayName: string;
   description?: string;
   roomType: RoomType;
   serviceCode?: string;
   privateRoom: boolean;
+  otherUserId?: number;
+  otherUserEmail?: string;
   memberCount: number;
   memberNames?: string[];
+  memberIds?: number[];
   createdAt?: string;
   createdByFullName?: string;
+  createdById?: number;
+  canManage?: boolean;
   lastMessagePreview?: string;
   lastMessageAt?: string;
   unreadCount: number;
-  // UI only
-  isOnline?: boolean;
 }
 
 export interface ChatMessage {
@@ -71,27 +76,55 @@ export interface ChatMessage {
   editedAt?: string;
   // UI only
   status?: MessageStatus;
-  isDeleted?: boolean;
 }
 
 export interface ChatMessageRequest {
   roomId: number;
   content: string;
-  type?: MessageType;
 }
 
 export interface ChatRoomRequest {
   name: string;
   description?: string;
+  /** true = groupe privé, false = salon public (admin/superviseur) */
   privateRoom: boolean;
-  type?: RoomType;
   memberIds?: number[];
 }
 
-export interface TypingIndicator {
+export interface ChatContact {
+  id: number;
+  fullName: string;
+  email: string;
+  serviceNom?: string;
+  grade?: string;
+  roles: string[];
+}
+
+export interface ChatInboxEvent {
+  type: 'MESSAGE' | 'ROOM_ADDED';
+  roomId: number;
+  message?: ChatMessage;
+}
+
+export interface TypingEvent {
   roomId: number;
   userId: number;
-  userFullName: string;
-  isTyping: boolean;
-  timestamp: Date;
+  userName: string;
+  typing: boolean;
 }
+
+export interface ReadEvent {
+  roomId: number;
+  userId: number;
+  readAt: string;
+}
+
+/** Limites partagées avec le backend */
+export const CHAT_LIMITS = {
+  MESSAGE_MAX: 4000,
+  ROOM_NAME_MIN: 3,
+  ROOM_NAME_MAX: 60,
+  ROOM_DESC_MAX: 255,
+  FILE_MAX_BYTES: 25 * 1024 * 1024,
+  FORBIDDEN_EXT: ['exe', 'bat', 'cmd', 'com', 'msi', 'ps1', 'sh', 'vbs', 'js', 'jar', 'scr', 'dll']
+};

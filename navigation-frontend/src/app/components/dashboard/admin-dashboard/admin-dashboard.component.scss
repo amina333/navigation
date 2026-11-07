@@ -57,7 +57,7 @@
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
@@ -542,3 +542,45 @@
     gap: 1rem;
   }
 }
+
+/* ── Ajouts : tableau de bord dynamique ── */
+@media (max-width: 1280px) { .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } }
+
+.updated { color: #94a3b8; font-size: .85rem; }
+
+.header-actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.btn-primary:disabled { opacity: .7; }
+.btn-primary .spin { animation: dash-spin .8s linear infinite; }
+@keyframes dash-spin { to { transform: rotate(360deg); } }
+
+.period-seg {
+  display: inline-flex; gap: 3px; padding: 3px; border-radius: 12px; background: #eef2f7;
+  button { padding: .5rem .85rem; border: none; border-radius: 9px; background: transparent; color: #475569; font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+    &.active { background: #fff; color: #1d4ed8; box-shadow: 0 1px 3px rgba(15,23,42,.12); } }
+}
+
+.stat-label .sub { font-weight: 500; color: #94a3b8; font-size: .8rem; }
+.stat-trend.warn { background: #fef3c7; color: #92400e; }
+.stat-trend .dot { font-size: .6rem; }
+
+.dash-error { margin-bottom: 1rem; padding: .75rem 1rem; border-radius: 12px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: .875rem;
+  button { margin-left: .5rem; border: none; background: none; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; } }
+
+.system-panel {
+  margin: -0.5rem 0 2rem; padding: 1.1rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 1rem; background: #fff;
+  .sp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .8rem;
+    h3 { margin: 0; font-size: .95rem; color: #0f172a; } span { font-size: .8rem; color: #64748b; } }
+  .sp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .6rem; }
+  .sp-item { display: flex; align-items: center; gap: .65rem; padding: .7rem .8rem; border-radius: 12px; background: #f0fdf4;
+    strong { display: block; font-size: .82rem; color: #0f172a; } small { font-size: .74rem; color: #475569; }
+    &.ko { background: #fffbeb; .sp-ico { background: #d97706; } } }
+  .sp-ico { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; background: #16a34a; color: #fff; font-size: .75rem; font-weight: 800; }
+}
+
+.card-meta { font-size: .8rem; font-weight: 600; color: #64748b; padding: .25rem .6rem; border-radius: 999px; background: #f1f5f9; }
+
+.role-stat-item { gap: .35rem; }
+.role-bar-fill.single { background: #2a78d6; }
+.flight-stat-icon { font-size: 1rem; font-weight: 700; }
+.flight-stat-value small { font-size: .75rem; font-weight: 600; color: #991b1b; }

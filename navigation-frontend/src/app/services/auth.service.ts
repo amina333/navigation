@@ -17,14 +17,24 @@ export class AuthService {
 
   constructor(private http: HttpClient, private router: Router) {}
 
-  login(request: LoginRequest): Observable<JwtResponse> {
-    return this.http.post<JwtResponse>(`${this.API_URL}/signin`, request).pipe(
-      tap(response => {
-        localStorage.setItem(this.TOKEN_KEY, response.token);
-        localStorage.setItem(this.USER_KEY, JSON.stringify(response));
-        this.currentUserSubject.next(response);
-      })
+  /** Si la double authentification est active, la réponse contient twoFactorRequired=true et aucun jeton */
+  login(request: LoginRequest): Observable<JwtResponse & { twoFactorRequired?: boolean }> {
+    return this.http.post<JwtResponse & { twoFactorRequired?: boolean }>(`${this.API_URL}/signin`, request).pipe(
+      tap(response => { if (!response.twoFactorRequired && response.token) this.storeSession(response); })
     );
+  }
+
+  /** Étape 2 : code reçu par e-mail */
+  verifyTwoFactor(email: string, code: string): Observable<JwtResponse> {
+    return this.http.post<JwtResponse>(`${this.API_URL}/verify-2fa`, { email, code }).pipe(
+      tap(response => this.storeSession(response))
+    );
+  }
+
+  private storeSession(response: JwtResponse): void {
+    localStorage.setItem(this.TOKEN_KEY, response.token);
+    localStorage.setItem(this.USER_KEY, JSON.stringify(response));
+    this.currentUserSubject.next(response);
   }
 
   logout(): void {

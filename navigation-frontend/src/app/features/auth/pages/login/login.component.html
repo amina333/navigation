@@ -1,61 +1,167 @@
-<div class="login-container">
-  <div class="login-card">
-    <div class="login-header">
-      <div class="logo">
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M24 4L4 14V34L24 44L44 34V14L24 4Z" stroke="#0066cc" stroke-width="2" fill="none"/>
-          <path d="M24 4V24M24 24L44 14M24 24L4 14" stroke="#0066cc" stroke-width="2"/>
-          <circle cx="24" cy="24" r="6" fill="#0066cc"/>
+<div class="login-page">
+  <div class="bg-image" aria-hidden="true"></div>
+  <div class="bg-overlay" aria-hidden="true"></div>
+
+  <!-- Top brand bar -->
+  <header class="top-bar">
+    <div class="brand-chip">
+      <span class="brand-dot"></span>
+      Skyguide · OACA Tunisie
+    </div>
+    <div class="status-chip">
+      <span class="pulse"></span>
+      Systèmes opérationnels
+    </div>
+  </header>
+
+  <main class="login-shell">
+    <section class="login-card">
+      <div class="card-glow" aria-hidden="true"></div>
+
+      <!-- ── Étape 2 : double authentification ── -->
+      <ng-container *ngIf="twoFactorEmail">
+        <div class="login-header">
+          <div class="logo-tile">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          </div>
+          <span class="eyebrow">Double authentification</span>
+          <h1>Vérification</h1>
+          <p class="subtitle">Un code à 6 chiffres vient d'être envoyé à <strong style="color:#fff">{{ twoFactorEmail }}</strong>. Il est valable 10 minutes.</p>
+        </div>
+        <form (ngSubmit)="verifyCode()" class="login-form" novalidate>
+          <div class="field" [class.has-error]="!!errorMessage">
+            <span class="field-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
+            <input id="tfa-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                   placeholder=" " [value]="twoFactorCode" (input)="onCodeInput($event)" class="code-field" />
+            <label for="tfa-code">Code de vérification</label>
+          </div>
+          <div *ngIf="errorMessage" class="alert-error" role="alert"><span>{{ errorMessage }}</span></div>
+          <button type="submit" class="btn-submit" [disabled]="isLoading || twoFactorCode.length !== 6">
+            <span *ngIf="!isLoading">Valider</span>
+            <ng-container *ngIf="isLoading"><span class="spinner"></span><span>Vérification…</span></ng-container>
+          </button>
+          <div class="forgot-row tfa-links">
+            <a href="" class="forgot-link" (click)="$event.preventDefault(); resendCode()">Renvoyer un code</a>
+            <a href="" class="forgot-link" (click)="$event.preventDefault(); cancelTwoFactor()">← Retour</a>
+          </div>
+        </form>
+      </ng-container>
+
+      <ng-container *ngIf="!twoFactorEmail">
+      <div class="login-header">
+        <div class="logo-tile">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+          </svg>
+        </div>
+        <span class="eyebrow">Espace sécurisé</span>
+        <h1>Bienvenue</h1>
+        <p class="subtitle">Connectez-vous à la plateforme d'assistance à la navigation aérienne</p>
+      </div>
+
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form" novalidate>
+        <!-- Email -->
+        <div class="field"
+             [class.has-error]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid">
+          <span class="field-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2"/>
+              <path d="m22 7-10 6L2 7"/>
+            </svg>
+          </span>
+          <input
+            type="email"
+            id="email"
+            formControlName="email"
+            placeholder=" "
+            autocomplete="email"
+          />
+          <label for="email">Adresse e-mail</label>
+        </div>
+        <div *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" class="field-error">
+          {{ loginForm.get('email')?.hasError('required') ? 'L\'adresse e-mail est obligatoire' : 'Veuillez saisir une adresse e-mail valide' }}
+        </div>
+
+        <!-- Password -->
+        <div class="field"
+             [class.has-error]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid">
+          <span class="field-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </span>
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            id="password"
+            formControlName="password"
+            placeholder=" "
+            autocomplete="current-password"
+          />
+          <label for="password">Mot de passe</label>
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="togglePassword()"
+            [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+            [attr.aria-pressed]="showPassword"
+            [title]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+          >
+            <svg *ngIf="!showPassword" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg *ngIf="showPassword" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.5 0-10-7-10-7a18.45 18.45 0 0 1 5.06-5.94"/>
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19"/>
+              <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+              <line x1="2" y1="2" x2="22" y2="22"/>
+            </svg>
+          </button>
+        </div>
+        <div *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid" class="field-error">
+          Le mot de passe est requis
+        </div>
+
+        <div class="forgot-row">
+          <a routerLink="/forgot-password" class="forgot-link">Mot de passe oublié ?</a>
+        </div>
+
+        <div *ngIf="errorMessage" class="alert-error" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{{ errorMessage }}</span>
+        </div>
+
+        <button type="submit" class="btn-submit" [disabled]="isLoading">
+          <ng-container *ngIf="!isLoading">
+            <span>Se connecter</span>
+            <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </ng-container>
+          <ng-container *ngIf="isLoading">
+            <span class="spinner"></span>
+            <span>Connexion en cours…</span>
+          </ng-container>
+        </button>
+      </form>
+      </ng-container>
+
+      <div class="secure-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
+        Connexion chiffrée · Accès réservé au personnel autorisé
       </div>
-      <h1>Skyguide Navigation</h1>
-      <p class="subtitle">Plateforme Intégrée d'Assistance à la Navigation Aérienne</p>
-    </div>
+    </section>
+  </main>
 
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
-      <div class="form-group">
-        <label class="form-label required" for="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          class="form-input"
-          formControlName="email"
-          placeholder="email&#64;skyguide.ch"
-          autocomplete="email"
-        />
-        <div *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" class="form-error">
-          Please enter a valid email address
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label required" for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          class="form-input"
-          formControlName="password"
-          placeholder="••••••••"
-          autocomplete="current-password"
-        />
-        <div *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid" class="form-error">
-          Password is required
-        </div>
-      </div>
-
-      <div *ngIf="errorMessage" class="alert alert-error">
-        {{ errorMessage }}
-      </div>
-
-      <button type="submit" class="btn btn-primary btn-block" [disabled]="isLoading">
-        <span *ngIf="isLoading" class="spinner"></span>
-        <span *ngIf="!isLoading">Sign In</span>
-        <span *ngIf="isLoading">Signing in...</span>
-      </button>
-    </form>
-
-    <div class="login-footer">
-      <p class="text-muted text-sm">© 2026 Skyguide. All rights reserved.</p>
-    </div>
-  </div>
+  <footer class="page-footer">© 2026 Skyguide Navigation — Office de l'Aviation Civile et des Aéroports</footer>
 </div>

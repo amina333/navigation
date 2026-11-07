@@ -59,8 +59,54 @@ public class User {
     @Builder.Default
     private boolean active = true;
 
+    /** Empreinte BCrypt du code de réinitialisation (jamais le code en clair) */
     @Column(name = "reset_password_token")
     private String resetPasswordToken;
+
+    @Column(name = "reset_token_expiry")
+    private LocalDateTime resetTokenExpiry;
+
+    /** Tentatives de saisie du code (blocage après 5 essais) */
+    @Column(name = "reset_attempts")
+    private Integer resetAttempts;
+
+    // ── Préférences utilisateur (page Paramètres) ─────────────────────
+    /** fr | en */
+    @Column(name = "pref_language", length = 5)
+    private String language;
+
+    /** Identifiant IANA, ex. Africa/Tunis */
+    @Column(name = "pref_timezone", length = 50)
+    private String timezone;
+
+    @Column(name = "pref_email_notifications")
+    private Boolean emailNotifications;
+
+    @Column(name = "pref_browser_notifications")
+    private Boolean browserNotifications;
+
+    @Column(name = "pref_notification_sounds")
+    private Boolean notificationSounds;
+
+    /** Déconnexion après inactivité (minutes, 0 = jamais) */
+    @Column(name = "pref_session_timeout")
+    private Integer sessionTimeoutMinutes;
+
+    // ── Double authentification par e-mail ────────────────────────────
+    @Column(name = "two_factor_enabled")
+    private Boolean twoFactorEnabled;
+
+    /** Empreinte BCrypt du code 2FA */
+    @Column(name = "two_factor_code")
+    private String twoFactorCode;
+
+    @Column(name = "two_factor_expiry")
+    private LocalDateTime twoFactorExpiry;
+
+    @Column(name = "two_factor_attempts")
+    private Integer twoFactorAttempts;
+
+    public boolean isTwoFactorOn() { return Boolean.TRUE.equals(twoFactorEnabled); }
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_roles",

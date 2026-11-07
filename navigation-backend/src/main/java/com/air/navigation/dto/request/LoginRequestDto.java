@@ -12,5 +12,6 @@ public class LoginRequestDto {
     private String email;
 
     @NotBlank(message = "Le mot de passe est obligatoire")
+    @jakarta.validation.constraints.Size(max = 100, message = "Mot de passe trop long")
     private String password;
 }

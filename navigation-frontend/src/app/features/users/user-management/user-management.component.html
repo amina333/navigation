@@ -1,4 +1,22 @@
 <div class="um-page">
+  <div class="um-toast" [class.warn]="toastWarn" *ngIf="successMessage" role="status">{{ toastWarn ? '⚠️' : '✓' }} {{ successMessage }}</div>
+
+  <!-- ══ État de l'envoi des e-mails ══ -->
+  <div class="mail-banner" *ngIf="mailStatus" [class.ok]="mailStatus.smtpConfigured">
+    <span class="mb-ico">{{ mailStatus.smtpConfigured ? '✉' : '⚠' }}</span>
+    <div class="mb-body">
+      <ng-container *ngIf="mailStatus.smtpConfigured; else notConfigured">
+        <strong>Envoi des e-mails actif</strong>
+        <small>Serveur {{ mailStatus.host }} · expéditeur {{ mailStatus.from }}</small>
+      </ng-container>
+      <ng-template #notConfigured>
+        <strong>Les e-mails ne sont pas envoyés : aucun compte SMTP n'est configuré.</strong>
+        <small>Ils sont enregistrés dans <code>{{ mailStatus.outbox }}</code>. Copiez <code>mail.local.properties.example</code> en <code>mail.local.properties</code> (dossier du backend), renseignez un compte Gmail + mot de passe d'application, puis redémarrez le backend.</small>
+      </ng-template>
+      <small class="mb-result" *ngIf="mailTestResult" [class.bad]="!mailTestResult.sent">{{ mailTestResult.sent ? '✓' : '✗' }} {{ mailTestResult.message }}</small>
+    </div>
+    <button class="mb-btn" (click)="sendTestMail()" [disabled]="mailTesting">{{ mailTesting ? 'Envoi…' : 'Envoyer un e-mail de test' }}</button>
+  </div>
 
   <!-- ══════════════════════════════════
        HERO HEADER
@@ -234,7 +252,7 @@
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           </button>
-          <button class="act-btn lock-btn"   (click)="resetUserPassword(user)" title="Réinitialiser MDP">
+          <button class="act-btn lock-btn"   (click)="resetUserPassword(user)" title="Renvoyer les identifiants par e-mail">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -290,64 +308,78 @@
       </div>
 
       <div class="modal-body">
-        <form [formGroup]="userForm" (ngSubmit)="saveUser()">
+        <form [formGroup]="userForm" (ngSubmit)="saveUser()" novalidate>
 
           <div class="fsection-title">Identité</div>
           <div class="frow">
             <div class="fgroup">
-              <label>Prénom</label>
-              <input type="text" formControlName="firstName" placeholder="ex: Ahmed">
+              <label for="u-first">Prénom <span class="req">*</span></label>
+              <input id="u-first" type="text" formControlName="firstName" placeholder="ex: Ahmed" maxlength="50" autocomplete="given-name">
+              <app-field-error [control]="uf('firstName')" label="Le prénom"></app-field-error>
             </div>
             <div class="fgroup">
-              <label>Nom</label>
-              <input type="text" formControlName="lastName" placeholder="ex: Ben Ali">
+              <label for="u-last">Nom <span class="req">*</span></label>
+              <input id="u-last" type="text" formControlName="lastName" placeholder="ex: Ben Ali" maxlength="50" autocomplete="family-name">
+              <app-field-error [control]="uf('lastName')" label="Le nom"></app-field-error>
             </div>
           </div>
 
           <div class="fgroup">
-            <label>Adresse Email</label>
-            <input type="email" formControlName="email" placeholder="ex: ahmed@skyguide.tn">
+            <label for="u-email">Adresse Email <span class="req">*</span></label>
+            <input id="u-email" type="email" formControlName="email" placeholder="ex: ahmed@oaca.nat.tn" maxlength="100" autocomplete="off">
+            <app-field-error [control]="uf('email')" label="L'adresse e-mail"></app-field-error>
           </div>
 
-          <div class="fgroup" *ngIf="!editingUser">
-            <label>Mot de passe</label>
-            <input type="password" formControlName="password" placeholder="••••••••">
+          <div class="fgroup">
+            <label for="u-pwd">{{ editingUser ? 'Nouveau mot de passe' : 'Mot de passe' }} <span class="req" *ngIf="!editingUser">*</span></label>
+            <div class="pwd-row">
+              <input id="u-pwd" [type]="showPwd ? 'text' : 'password'" formControlName="password" [placeholder]="editingUser ? 'Laisser vide pour ne pas changer' : '••••••••'" maxlength="100" autocomplete="new-password">
+              <button type="button" class="pwd-btn" (click)="showPwd = !showPwd" [attr.aria-label]="showPwd ? 'Masquer' : 'Afficher'" [title]="showPwd ? 'Masquer' : 'Afficher'">{{ showPwd ? '🙈' : '👁' }}</button>
+              <button type="button" class="pwd-btn gen" (click)="generatePassword()" title="Générer un mot de passe robuste">⚡ Générer</button>
+            </div>
+            <small class="fhint" *ngIf="!uf('password')?.touched || uf('password')?.valid">8 caractères min. avec majuscule, minuscule, chiffre et caractère spécial.</small>
+            <app-field-error [control]="uf('password')" label="Le mot de passe"></app-field-error>
           </div>
 
           <div class="fsection-title">Coordonnées</div>
           <div class="frow">
             <div class="fgroup">
-              <label>Téléphone</label>
-              <input type="tel" formControlName="phoneNumber" placeholder="+216 XX XXX XXX">
+              <label for="u-phone">Téléphone</label>
+              <input id="u-phone" type="tel" formControlName="phoneNumber" placeholder="+216 20 123 456" maxlength="20" autocomplete="tel">
+              <app-field-error [control]="uf('phoneNumber')" label="Le téléphone"></app-field-error>
             </div>
             <div class="fgroup">
-              <label>N° Badge</label>
-              <input type="text" formControlName="badgeNumber" placeholder="ex: ATC-042">
+              <label for="u-badge">N° Badge</label>
+              <input id="u-badge" type="text" formControlName="badgeNumber" placeholder="ex: ATC-042" maxlength="30">
+              <app-field-error [control]="uf('badgeNumber')" label="Le badge"></app-field-error>
             </div>
           </div>
 
           <div class="frow">
             <div class="fgroup">
-              <label>Matricule <span class="field-tag">UML</span></label>
-              <input type="text" formControlName="matricule" placeholder="ex: MAT-2024-001">
+              <label for="u-mat">Matricule <span class="field-tag">UML</span></label>
+              <input id="u-mat" type="text" formControlName="matricule" placeholder="ex: MAT-2024-001" maxlength="30">
+              <app-field-error [control]="uf('matricule')" label="Le matricule"></app-field-error>
             </div>
             <div class="fgroup">
-              <label>Grade <span class="field-tag">UML</span></label>
-              <input type="text" formControlName="grade" placeholder="ex: Contrôleur Senior">
+              <label for="u-grade">Grade <span class="field-tag">UML</span></label>
+              <input id="u-grade" type="text" formControlName="grade" placeholder="ex: Contrôleur Senior" maxlength="60">
+              <app-field-error [control]="uf('grade')" label="Le grade"></app-field-error>
             </div>
           </div>
 
           <div class="frow">
             <div class="fgroup" style="grid-column:1/-1">
-              <label>Service de rattachement <span class="field-tag">UML</span></label>
-              <input type="text" formControlName="serviceNom" placeholder="ex: ATC Tunis-Carthage">
+              <label for="u-svc">Service de rattachement <span class="field-tag">UML</span></label>
+              <input id="u-svc" type="text" formControlName="serviceNom" placeholder="ex: ATC Tunis-Carthage" maxlength="80">
+              <app-field-error [control]="uf('serviceNom')" label="Le service"></app-field-error>
             </div>
           </div>
 
           <div class="fsection-title">Permissions</div>
           <div class="fgroup">
-            <label>Rôle</label>
-            <select formControlName="roles">
+            <label for="u-role">Rôle <span class="req">*</span></label>
+            <select id="u-role" formControlName="roles">
               <option value="">Sélectionner un rôle</option>
               <option value="ADMIN">Administrateur</option>
               <option value="SUPERVISEUR">Superviseur</option>
@@ -358,6 +390,7 @@
               <option value="QUALITE">Qualité</option>
               <option value="CONSULTATION">Consultant</option>
             </select>
+            <app-field-error [control]="uf('roles')" label="Le rôle"></app-field-error>
           </div>
 
           <div class="toggle-group">
@@ -370,10 +403,22 @@
             </label>
           </div>
 
+          <label class="mail-option">
+            <input type="checkbox" [checked]="sendEmail" (change)="sendEmail = $any($event.target).checked">
+            <span class="mail-ico">✉</span>
+            <span>
+              <strong>{{ editingUser ? 'Prévenir l\'utilisateur par e-mail' : 'Envoyer les identifiants par e-mail' }}</strong>
+              <small>{{ editingUser ? 'Récapitulatif des modifications (et nouveau mot de passe s\'il a été changé).' : 'E-mail de bienvenue avec l\'identifiant et le mot de passe temporaire.' }}</small>
+            </span>
+          </label>
+
+          <div class="form-server-error" *ngIf="formError" role="alert">⚠️ {{ formError }}</div>
+          <p class="form-hint-required"><span class="req">*</span> Champs obligatoires</p>
+
           <div class="modal-footer">
             <button type="button" class="btn-cancel-modal" (click)="closeModal()">Annuler</button>
-            <button type="submit" class="btn-submit-modal" [disabled]="userForm.invalid">
-              {{ editingUser ? '✓ Mettre à jour' : '+ Créer le compte' }}
+            <button type="submit" class="btn-submit-modal" [disabled]="saving">
+              {{ saving ? 'Enregistrement…' : (editingUser ? '✓ Mettre à jour' : '+ Créer le compte') }}
             </button>
           </div>
         </form>
