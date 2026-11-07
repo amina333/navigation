@@ -4,6 +4,7 @@
 #
 #  Usage (sur la VM, depuis le dossier du dépôt) :
 #     sudo -v && bash deploy/scripts/update-vm.sh            # tag v6 par défaut
+#  sudo n'est utilisé que pour buildah et ctr (règle possible : /etc/sudoers.d/skyguide-deploy)
 #     sudo -v && bash deploy/scripts/update-vm.sh v7         # autre tag
 #
 #  Étapes : git pull → secret app-secrets (dont SMTP) → build backend + frontend
@@ -54,13 +55,15 @@ fi
 build_and_import() {
   local name="$1" dockerfile="$2"
   local ref="${name}:${TAG}"
-  local tar; tar=$(mktemp -u "/tmp/${name}-${TAG}.XXXXXX.tar")
+  # Dossier de travail appartenant à l'utilisateur : le tar créé par root peut y être supprimé sans sudo
+  local work="$HOME/.cache/skyguide-build"; mkdir -p "$work"
+  local tar; tar=$(mktemp -u "${work}/${name}-${TAG}.XXXXXX.tar")
   echo -e "  ${C}buildah build ${ref}${N} (plusieurs minutes la première fois)"
   sudo buildah bud --layers -f "$dockerfile" -t "$ref" . > "/tmp/build-${name}.log" 2>&1 \
     || { tail -30 "/tmp/build-${name}.log"; fail "échec du build de ${ref} (log : /tmp/build-${name}.log)"; }
   sudo buildah push "$ref" "docker-archive:${tar}:${ref}" > /dev/null 2>&1 || fail "export de ${ref} impossible"
   sudo ctr -n k8s.io images import --no-unpack "$tar" > /dev/null || fail "import containerd de ${ref} impossible"
-  sudo rm -f "$tar" || true
+  rm -f "$tar" || true
   sudo ctr -n k8s.io images ls -q | grep -q "${name}:${TAG}" && ok "${ref} importée dans containerd"
 }
 
