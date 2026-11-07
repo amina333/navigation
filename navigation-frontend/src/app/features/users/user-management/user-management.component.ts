@@ -337,7 +337,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   // ── Diagnostic e-mail ─────────────────────────────────────────
-  mailStatus: { smtpConfigured: boolean; host: string; from: string; outbox: string } | null = null;
+  mailStatus: { smtpConfigured: boolean; host: string; from: string; outbox: string; warning?: string } | null = null;
   mailTesting = false;
   mailTestResult: { sent: boolean; message: string; error?: string } | null = null;
   toastWarn = false;

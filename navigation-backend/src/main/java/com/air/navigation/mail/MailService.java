@@ -53,6 +53,12 @@ public class MailService {
                 : "SMTP non configuré : les e-mails seront enregistrés dans " + this.outbox);
     }
 
+    @jakarta.annotation.PostConstruct
+    void checkDeliverability() {
+        String w = deliverabilityWarning();
+        if (w != null) log.warn("[MAIL] ⚠ {}", w);
+    }
+
     @Value("${spring.mail.host:}")
     private String host;
 
@@ -67,7 +73,27 @@ public class MailService {
         m.put("port", port);
         m.put("from", from);
         m.put("outbox", outbox.toString());
+        String warning = deliverabilityWarning();
+        if (warning != null) m.put("warning", warning);
         return m;
+    }
+
+    /**
+     * Gmail SMTP n'est autorisé (SPF/DKIM/DMARC) que pour une adresse @gmail.com.
+     * Avec un expéditeur d'un autre domaine (ex. @esprit.tn, géré par Outlook), Gmail accepte l'envoi
+     * mais la boîte du destinataire le met en spam ou le rejette.
+     */
+    public String deliverabilityWarning() {
+        if (!isSmtpConfigured() || host == null || from == null || !from.contains("@")) return null;
+        String domain = from.substring(from.indexOf('@') + 1).toLowerCase();
+        boolean gmailHost = host.toLowerCase().contains("gmail.com");
+        boolean gmailFrom = domain.equals("gmail.com") || domain.equals("googlemail.com");
+        if (gmailHost && !gmailFrom) {
+            return "L'expéditeur " + from + " n'est pas une adresse Gmail alors que l'envoi passe par smtp.gmail.com : "
+                    + "le domaine " + domain + " n'autorise pas Gmail (SPF/DMARC), les e-mails arriveront en spam ou seront rejetés. "
+                    + "Utilisez un compte @gmail.com (adresse + mot de passe d'application) dans mail.local.properties.";
+        }
+        return null;
     }
 
     /** Envoi de test SYNCHRONE : renvoie le diagnostic exact en cas d'échec */
@@ -93,7 +119,10 @@ public class MailService {
             helper.setText(htmlToText(html), html);
             sender.send(message);
             res.put("sent", true);
-            res.put("message", "E-mail de test envoyé à " + to + ". Vérifiez aussi le dossier Spam / Courrier indésirable.");
+            String w = deliverabilityWarning();
+            res.put("message", w != null
+                    ? "Accepté par le serveur SMTP, mais risque fort de non-réception : " + w
+                    : "E-mail de test envoyé à " + to + ". Vérifiez aussi le dossier Spam / Courrier indésirable.");
         } catch (Exception e) {
             String raw = rootMessage(e);
             res.put("sent", false);

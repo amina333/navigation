@@ -46,7 +46,7 @@ export class UserService {
   }
 
   // Diagnostic SMTP (admin)
-  getMailStatus(): Observable<{ smtpConfigured: boolean; host: string; port: number; from: string; outbox: string }> {
+  getMailStatus(): Observable<{ smtpConfigured: boolean; host: string; port: number; from: string; outbox: string; warning?: string }> {
     return this.http.get<any>(`${environment.apiUrl}/admin/mail/status`);
   }
 
