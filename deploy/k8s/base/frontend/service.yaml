@@ -11,4 +11,6 @@ spec:
   ports:
     - port: 80
       targetPort: 80
+      # Port fixe : l'application reste sur http://<IP de la VM>:31601 même après reconstruction
+      nodePort: 31601
   type: NodePort
