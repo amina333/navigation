@@ -2,7 +2,8 @@
   <div class="um-toast" [class.warn]="toastWarn" *ngIf="successMessage" role="status">{{ toastWarn ? '⚠️' : '✓' }} {{ successMessage }}</div>
 
   <!-- ══ État de l'envoi des e-mails ══ -->
-  <div class="mail-banner" *ngIf="mailStatus" [class.ok]="mailStatus.smtpConfigured">
+  <!-- Bandeau affiché uniquement si l'envoi des e-mails ne fonctionne pas -->
+  <div class="mail-banner" *ngIf="mailStatus && !mailStatus.smtpConfigured">
     <span class="mb-ico">{{ mailStatus.smtpConfigured ? '✉' : '⚠' }}</span>
     <div class="mb-body">
       <ng-container *ngIf="mailStatus.smtpConfigured; else notConfigured">
