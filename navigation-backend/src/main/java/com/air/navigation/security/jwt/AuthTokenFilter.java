@@ -32,8 +32,9 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/api/auth/") ||
-               path.startsWith("/swagger-ui") ||
+        // /api/auth/** n'est plus ignoré : /api/auth/change-password a besoin de l'utilisateur connecté.
+        // Pour les routes publiques (signin, forgot-password…) le filtre ne fait rien sans jeton valide.
+        return path.startsWith("/swagger-ui") ||
                path.startsWith("/v3/api-docs") ||
                path.startsWith("/api-docs") ||
                path.startsWith("/swagger-resources") ||

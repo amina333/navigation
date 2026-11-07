@@ -16,7 +16,7 @@ patches:
 images:
 - name: skyguide-backend
   newName: skyguide-backend
-  newTag: v6
+  newTag: v7
 - name: skyguide-frontend
   newName: skyguide-frontend
-  newTag: v6
+  newTag: v7

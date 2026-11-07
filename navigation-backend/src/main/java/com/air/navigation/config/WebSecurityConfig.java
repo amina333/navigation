@@ -46,6 +46,8 @@ public class WebSecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Changer son mot de passe exige d'être connecté
+                        .requestMatchers("/api/auth/change-password").authenticated()
                         // Auth public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         // Swagger UI & OpenAPI docs - all Springdoc paths
