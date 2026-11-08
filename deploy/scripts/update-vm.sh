@@ -82,7 +82,17 @@ else
   kustomize build deploy/k8s/overlays/dev | kubectl apply -f - >/dev/null
   ok "manifests appliqués (kustomize)"
 fi
-sleep 5
+# ArgoCD crée les déploiements de façon asynchrone (cluster neuf, première synchro…) :
+# on attend qu'ils existent avant de les redémarrer, au lieu d'un délai fixe.
+for dep in skyguide-backend skyguide-frontend; do
+  for i in $(seq 1 60); do
+    kubectl -n "$NS" get deployment "$dep" >/dev/null 2>&1 && break
+    [ "$i" -eq 1 ] && echo "  attente de la création de $dep par ArgoCD…"
+    sleep 5
+  done
+  kubectl -n "$NS" get deployment "$dep" >/dev/null 2>&1 || fail "$dep introuvable après 5 min — vérifiez l'application dans ArgoCD"
+done
+ok "déploiements présents"
 # Les pods en ErrImageNeverPull (image absente avant le build) repartent avec l'image importée
 kubectl -n "$NS" rollout restart deployment/skyguide-backend deployment/skyguide-frontend >/dev/null
 kubectl -n "$NS" rollout status deployment/skyguide-backend --timeout=300s || warn "backend pas encore prêt"
